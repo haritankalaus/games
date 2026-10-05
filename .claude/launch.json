@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "chain-riders",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["chain-riders/tools/dev-server.js", "8123"],
+      "port": 8123
+    },
+    {
+      "name": "space-sprint",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["space-sprint/tools/dev-server.js", "8124"],
+      "port": 8124
+    }
+  ]
+}

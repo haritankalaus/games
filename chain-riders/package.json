@@ -1,0 +1,10 @@
+{
+  "name": "chain-riders",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Retro pseudo-3D combat motorcycle racer (HTML5 canvas, no dependencies)",
+  "scripts": {
+    "dev": "node tools/dev-server.js 8123",
+    "build": "node tools/build.js"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "rocket-skyway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SkyRoads-style 3D space-lane racer against bot pilots (HTML5 canvas, no dependencies)",
+  "scripts": {
+    "dev": "node tools/dev-server.js 8124",
+    "build": "node tools/build.js"
+  }
+}
