@@ -31,7 +31,7 @@
   const CAM_BACK = 4.3, CAM_UP = 2.0, NEAR = 0.4, DRAW_ROWS = 56; // chase camera: centred right behind the player
   const GAP_X = 0.035, GAP_Z = 0.05; // seams between tiles
   const RESPAWN_T = 1.1, GHOST_T = 1.6, BOOST_T = 1.6, FUEL_TIME = 38;
-  const FONT = '"Trebuchet MS", Arial, sans-serif';
+  const FONT = 'Impact, "Arial Black", "Haettenschweiler", sans-serif';
   const RAINBOW = ['#ff3b3b', '#ffd400', '#3bff6b', '#19e6ff', '#b84dff', '#ff4fa8'];
   const PLACE_COINS = [40, 25, 15, 5, 0];
   const PASSING = ['ZOOM!', 'SEE YA!', 'BEEP BEEP!', 'WHEEE!', 'TOO SLOW!'];
@@ -99,11 +99,11 @@
     ctx.fill();
   }
   function txt(s, x, y, size, color, align = 'center', stroke = true) {
-    ctx.font = `italic 800 ${size}px ${FONT}`;
+    ctx.font = `${size}px ${FONT}`;
     ctx.textAlign = align;
     ctx.textBaseline = 'alphabetic';
     if (stroke) {
-      ctx.lineWidth = Math.max(2, size / 10);
+      ctx.lineWidth = Math.max(3, size / 7);
       ctx.strokeStyle = 'rgba(0,0,0,0.85)';
       ctx.lineJoin = 'round';
       ctx.strokeText(s, x, y);
@@ -113,7 +113,7 @@
   }
   // bouncy rainbow text, one hue per letter
   function waveText(s, x, y, size, t) {
-    ctx.font = `italic 800 ${size}px ${FONT}`;
+    ctx.font = `${size}px ${FONT}`;
     const widths = [...s].map((ch) => ctx.measureText(ch).width);
     let cx = x - widths.reduce((a, b) => a + b, 0) / 2;
     [...s].forEach((ch, i) => {
@@ -594,25 +594,15 @@
     hover() { this.tone(1760, 0.04, 'sine', 0.035); },
   };
 
-  // Original 148 BPM retro-techno sequencer: four-on-the-floor drums, acid bass and chip arpeggios.
+  // Original 140 BPM retro-techno sequencer: four-on-the-floor drums, acid bass and chip arpeggios.
   const music = {
     next: 0, step: 0,
-    acid(freq, t, duration, volume) {
-      const ac = audio.ac, oscillator = ac.createOscillator(), filter = ac.createBiquadFilter(), gain = ac.createGain();
-      oscillator.type = 'sawtooth'; oscillator.frequency.setValueAtTime(freq, t);
-      filter.type = 'lowpass'; filter.Q.value = 7;
-      filter.frequency.setValueAtTime(2600, t); filter.frequency.exponentialRampToValueAtTime(180, t + duration);
-      gain.gain.setValueAtTime(0.001, t); gain.gain.linearRampToValueAtTime(volume, t + 0.006); gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
-      oscillator.connect(filter); filter.connect(gain); gain.connect(audio.mus);
-      oscillator.start(t); oscillator.stop(t + duration + 0.02);
-      oscillator.onended = () => { oscillator.disconnect(); filter.disconnect(); gain.disconnect(); };
-    },
     CHORDS: [[52, 55, 59], [48, 52, 55], [45, 48, 52], [47, 51, 54]],
     ARP: [0, 2, 1, 2, 0, 1, 2, 1, 0, 2, 1, 0, 2, 1, 2, 1],
     tick() {
       const a = audio;
       if (!a.ac || a.muted || a.adMuted || a.ac.state !== 'running') return;
-      const ac = a.ac, dur = 60 / 148 / 4, M = a.mus;
+      const ac = a.ac, dur = 60 / 140 / 4, M = a.mus;
       if (this.next < ac.currentTime) this.next = ac.currentTime + 0.05;
       while (this.next < ac.currentTime + 0.15) {
         const s = this.step % 64, ch = this.CHORDS[Math.floor(s / 16)], i = s % 16, t = this.next;
@@ -629,12 +619,11 @@
         a.noise(i % 4 === 2 ? 0.1 : 0.025, i % 2 ? 0.045 : 0.025, 8500, t, M, 0, 'highpass');
         if ([0, 2, 3, 6, 8, 10, 11, 14].includes(i)) {
           const n = midiHz(ch[0] - 12 + (i === 3 || i === 11 ? 12 : 0));
-          this.acid(n, t, dur * 1.15, 0.055);
+          a.tone(n, dur * 0.85, 'sawtooth', 0.055, t, n * 0.94, M);
           a.tone(n / 2, dur * 1.1, 'sine', 0.105, t, 0, M);
         }
         const duck = i % 4 === 0 ? 0.4 : 1;
-        a.tone(midiHz(ch[this.ARP[i]] + 12), dur * 0.45, 'triangle', 0.04 * intensity * duck, t, 0, M);
-        if (i === 7 || i === 15) a.noise(0.08, 0.065, 6500, t, M, 11000, 'highpass');
+        a.tone(midiHz(ch[this.ARP[i]] + 12), dur * 0.55, 'square', 0.024 * intensity * duck, t, 0, M);
         if (i === 2 || i === 10) for (const m of ch) a.tone(midiHz(m + 12), dur * 1.4, 'sawtooth', 0.016, t, 0, M, 0.015);
         if (racing && race.boostView > 0.8 && i % 2) a.tone(midiHz(ch[this.ARP[i]] + 24), dur * 0.4, 'triangle', 0.025, t, 0, M);
         this.next += dur;
@@ -2383,31 +2372,29 @@
     const fuelColor = fuel > 0.25 ? '#ffca69' : '#ff657b';
     ctx.save();
     // Lean the instrument into the world, keeping the road centre clear.
-    ctx.transform(touchMode ? 1.18 : 1.42, -0.15, 0.3, 0.94, 22, touchMode ? H - 270 : H - 115);
+    ctx.transform(1, -0.13, 0.25, 1, 22, touchMode ? H - 270 : H - 120);
     ctx.fillStyle = 'rgba(3,14,28,0.78)';
     poly(ctx.fillStyle, 0, 0, 240, 0, 263, 24, 263, 105, 0, 105);
-    ctx.strokeStyle = cyan; ctx.lineWidth = 1.5; ctx.shadowColor = cyan; ctx.shadowBlur = 14;
+    ctx.strokeStyle = cyan; ctx.lineWidth = 1.5;
     line(0, 105, 0, 0, 240, 0, 263, 24, 263, 105, 0, 105);
     ctx.fillStyle = cyan; ctx.fillRect(0, 0, 4, 105);
-    ctx.shadowBlur = 10;
     txt(String(Math.round(p.v * SPEED_TO_MPH)).padStart(3, '0'), 16, 47, 45, '#f0fcff', 'left');
     txt('MPH', 108, 46, 14, cyan, 'left', false);
     txt(boosting ? 'BOOST LINK' : 'VELOCITY', 247, 22, 10, cyan, 'right', false);
     txt(`${Math.round(p.fuel)}%`, 247, 91, 14, fuelColor, 'right', false);
     txt('FUEL', 15, 91, 12, fuelColor, 'left', false);
-    ctx.shadowColor = cyan; ctx.shadowBlur = boosting ? 20 + Math.sin(blink * 12) * 4 : 13;
+    ctx.shadowColor = cyan; ctx.shadowBlur = boosting ? 10 + Math.sin(blink * 12) * 3 : 5;
     for (let i = 0; i < 24; i++) {
       const x = 16 + i * 9.5;
       ctx.fillStyle = i / 24 < speed ? cyan : '#1b3543';
       poly(ctx.fillStyle, x, 55, x + 7, 55, x + 10, 66, x + 3, 66);
     }
-    ctx.shadowColor = fuelColor; ctx.shadowBlur = 9;
+    ctx.shadowBlur = 0;
     for (let i = 0; i < 20; i++) {
       ctx.fillStyle = i / 20 < fuel ? fuelColor : '#332e2d';
       ctx.fillRect(58 + i * 7, 81, 5, 9);
     }
     if (fuel < 0.25 && Math.floor(blink * 4) % 2) txt('LOW', 247, 68, 12, '#ff657b', 'right', false);
-    ctx.shadowBlur = 0;
     // A travelling highlight gives the telemetry a live, retro display feel.
     ctx.globalAlpha = 0.16;
     ctx.fillStyle = '#ffffff'; ctx.fillRect(14 + (blink * 40 % 225), 52, 2, 42);
@@ -2733,13 +2720,13 @@
     ctx.save();
     ctx.globalCompositeOperation = 'soft-light';
     const grade = ctx.createLinearGradient(0, 0, 0, H);
-    grade.addColorStop(0, 'rgba(170,120,245,0.22)');
-    grade.addColorStop(0.45, 'rgba(90,150,220,0.16)');
-    grade.addColorStop(1, 'rgba(20,125,165,0.3)');
+    grade.addColorStop(0, 'rgba(255,180,125,0.18)');
+    grade.addColorStop(0.45, 'rgba(130,150,220,0.08)');
+    grade.addColorStop(1, 'rgba(35,110,165,0.24)');
     ctx.fillStyle = grade;
     ctx.fillRect(0, 0, W, H);
     ctx.globalCompositeOperation = 'multiply';
-    ctx.fillStyle = 'rgba(105,130,175,0.28)';
+    ctx.fillStyle = 'rgba(195,215,245,0.08)';
     ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
@@ -2902,7 +2889,7 @@
     platform.loadingStop();
     if (DEBUG) {
       window.__sprint = {
-        get race() { return race; }, get state() { return state; }, get track() { return track; }, get camera() { return { ...cam }; }, get music() { return { step: music.step, contextState: audio.ac?.state, bpm: 148 }; }, save,
+        get race() { return race; }, get state() { return state; }, get track() { return track; }, get camera() { return { ...cam }; }, get music() { return { step: music.step, contextState: audio.ac?.state, bpm: 140 }; }, save,
         start(i) { startLevel(i); }, endless() { startEndless(); },
         autopilot() { race.autopilot = true; race.player.react = 0.08; },
         touch() { touchMode = true; },
