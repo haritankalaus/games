@@ -28,7 +28,7 @@
   const MAX_CRUISE = MAX_SPEED / 1.2; // Leave room for several boosts, even on later courses.
   const STEER = 8.5;                 // lanes per second
   const FOCAL = 560, CY = H * 0.42, PITCH = 0.25, COSP = Math.cos(PITCH), SINP = Math.sin(PITCH);
-  const CAM_BACK = 4.6, CAM_UP = 2.0, NEAR = 0.4, DRAW_ROWS = 56; // chase camera: centred right behind the player
+  const CAM_BACK = 4.3, CAM_UP = 2.0, NEAR = 0.4, DRAW_ROWS = 56; // chase camera: centred right behind the player
   const GAP_X = 0.035, GAP_Z = 0.05; // seams between tiles
   const RESPAWN_T = 1.1, GHOST_T = 1.6, BOOST_T = 1.6, FUEL_TIME = 38;
   const FONT = 'Impact, "Arial Black", "Haettenschweiler", sans-serif';
@@ -1176,18 +1176,21 @@
       const k = 1 - Math.exp(-7 * dt);
       cam.x += (f.x * 0.8 - cam.x) * k;
       cam.y += (CAM_UP + clamp(f.y, -0.3, 3) * 0.75 - cam.y) * (1 - Math.exp(-5 * dt));
-      cam.z = f.z * ROW_D - CAM_BACK + r.speedView * 0.9 + r.boostView * 0.2;
       cam.roll += (clamp(-(f.vx + f.bump) * 0.022, -0.22, 0.22) - cam.roll) * k;
       const jumpPitch = f.grounded ? 0 : clamp(f.vy * 0.007, -0.05, 0.05);
       cam.pitch += (PITCH + jumpPitch - cam.pitch) * (1 - Math.exp(-6 * dt));
       cam.cosp = Math.cos(cam.pitch); cam.sinp = Math.sin(cam.pitch);
     }
     const boostTarget = f.alive ? f.boostPower / 0.25 : 0;
-    r.boostView += (boostTarget - r.boostView) * (1 - Math.exp(-(boostTarget > r.boostView ? 5 : 1.4) * dt));
+    // Immediate lens kick on each pad; only recovery is eased.
+    if (boostTarget >= r.boostView) r.boostView = boostTarget;
+    else r.boostView += (boostTarget - r.boostView) * (1 - Math.exp(-1.4 * dt));
     // the faster you go, the wider the view (and the closer the camera hugs the rocket)
     const spd = f.alive ? clamp(f.v / (r.cruise * 1.1), 0, 1.2) : 0;
     r.speedView += (spd - r.speedView) * Math.min(1, dt * 3);
-    cam.f = FOCAL * Math.max(0.5, 1 - 0.25 * r.speedView - 0.12 * r.boostView);
+    cam.f = FOCAL * Math.max(0.45, 1 - 0.25 * r.speedView - 0.12 * r.boostView);
+
+    if (f.alive) cam.z = f.z * ROW_D - CAM_BACK + r.speedView * 0.9 + r.boostView * 0.3;
 
     // engine trails
     for (const rc of r.racers) {
@@ -2666,6 +2669,22 @@
     txt('ROTATE YOUR PHONE', W / 2, H / 2 + 110, 48, '#ffd400');
   }
 
+  // Lightweight cinematic grade: cool shadows and warm highlights, applied before the HUD.
+  function drawColorGrade() {
+    ctx.save();
+    ctx.globalCompositeOperation = 'soft-light';
+    const grade = ctx.createLinearGradient(0, 0, 0, H);
+    grade.addColorStop(0, 'rgba(255,180,125,0.18)');
+    grade.addColorStop(0.45, 'rgba(130,150,220,0.08)');
+    grade.addColorStop(1, 'rgba(35,110,165,0.24)');
+    ctx.fillStyle = grade;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = 'rgba(195,215,245,0.08)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
   function render() {
     frameNo++;
     uiButtons = [];
@@ -2674,6 +2693,7 @@
     ctx.save();
     if (race && race.shake > 0) ctx.translate((Math.random() * 2 - 1) * race.shake * 12, (Math.random() * 2 - 1) * race.shake * 12);
     renderWorld();
+    drawColorGrade();
     ctx.restore();
     if (cam.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${cam.flash * 1.5})`; ctx.fillRect(0, 0, W, H); }
     if (state === 'race') drawHUD();
@@ -2747,6 +2767,7 @@
     frameNo = 5;
     blink = 1.3;
     renderWorld();
+    drawColorGrade();
 
     const shots = [
       ['cover-landscape.png', 1920, 1080, 0.12, 1.7],
