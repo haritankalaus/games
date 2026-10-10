@@ -674,12 +674,12 @@
   let blink = 0, frameNo = 0, toast = null, touchMode = false, uiButtons = [], demoN = 0, results = null;
   let mouse = { x: -1, y: -1 }, hoverNow = null, hoverLast = null, fade = 1, lastState = null;
   const keys = { left: false, right: false, down: false, up: false };
-  const cam = { x: 0, y: CAM_UP, z: -CAM_BACK, f: FOCAL, roll: 0, flash: 0, dip: 0 };
+  const cam = { pitch: PITCH, cosp: COSP, sinp: SINP, x: 0, y: CAM_UP, z: -CAM_BACK, f: FOCAL, roll: 0, flash: 0, dip: 0 };
 
   function makeRacer(o) {
     return Object.assign({
       x: 0, y: 0, z: 0, v: 0, vx: 0, bump: 0, vy: 0, grounded: true, coyote: 0, jumpBuf: 0, gh: 0,
-      alive: true, deadT: 0, ghostT: 0, fuel: 100, boostT: 0, stickyT: 0, fuelRow: -1, roll: 0,
+      alive: true, deadT: 0, ghostT: 0, fuel: 100, boostT: 0, boostPower: 0, boostRow: -1, stickyT: 0, fuelRow: -1, roll: 0,
       finished: false, finishTime: 0, safeZ: 0, safeL: MID, speedMul: 1, base: 1, bumpCd: 0,
       input: { dir: 0, jump: false, brake: false, gas: true }, target: MID, commitZ: 0, landLane: MID, thinkT: 0, lead: 0.3,
       react: 0.1, mistake: 0, aggro: 0, ahead: false, say: '', sayT: 0, sx: -999, sy: -999, isPlayer: false,
@@ -739,7 +739,7 @@
       }
     }
     r.focus = r.player || r.bots[0];
-    cam.x = r.focus.x * 0.8; cam.y = CAM_UP; cam.z = r.focus.z * ROW_D - CAM_BACK; cam.roll = 0;
+    cam.x = r.focus.x * 0.8; cam.y = CAM_UP; cam.z = r.focus.z * ROW_D - CAM_BACK; cam.roll = 0; cam.pitch = PITCH; cam.cosp = COSP; cam.sinp = SINP;
     wparts = [];
     return r;
   }
@@ -753,7 +753,7 @@
     const r = race;
     rc.alive = false; rc.deadT = RESPAWN_T;
     rc.deathZ = why === 'fall' && rc.airZ != null ? rc.airZ : rc.z; // for falls: where we left the ground
-    rc.deathL = clamp(laneOf(rc.x), 0, LANES - 1); rc.v = 0; rc.vx = 0; rc.bump = 0; rc.boostT = 0;
+    rc.deathL = clamp(laneOf(rc.x), 0, LANES - 1); rc.v = 0; rc.vx = 0; rc.bump = 0; rc.boostT = 0; rc.boostPower = 0; rc.boostRow = -1;
     if (why !== 'fall') {
       const Z = rc.z * ROW_D;
       // fireball, flying sparks and rising smoke
@@ -801,7 +801,7 @@
     }
     Object.assign(rc, {
       alive: true, x: rc.safeL - MID, y: 0, z: rc.safeZ, vy: 0, vx: 0, bump: 0, grounded: true, ghostT: GHOST_T,
-      boostT: 0, stickyT: 0, v: race.cruise * (rc.isPlayer ? IDLE : rc.speedMul), airZ: null, fuel: Math.max(rc.fuel, 35), target: rc.safeL, commitZ: 0, landLane: rc.safeL, jumpBuf: 0,
+      boostT: 0, boostPower: 0, boostRow: -1, stickyT: 0, v: race.cruise * (rc.isPlayer ? IDLE : rc.speedMul), airZ: null, fuel: Math.max(rc.fuel, 35), target: rc.safeL, commitZ: 0, landLane: rc.safeL, jumpBuf: 0,
     });
     wemit(rc.x, 0.4, rc.z * ROW_D, 14, { min: 1, max: 3, lmin: 0.3, lmax: 0.6, smin: 0.08, smax: 0.14, color: '#bfefff', cap: 40 });
     ringFx(rc.x, 0.02, rc.z * ROW_D, '#bfefff', 0.3, 1.6, 0.5);
@@ -816,7 +816,8 @@
       return;
     }
     if (rc.ghostT > 0) rc.ghostT -= dt;
-    if (rc.boostT > 0) rc.boostT -= dt;
+    if (rc.boostT > 0) rc.boostT = Math.max(0, rc.boostT - dt);
+    else rc.boostPower = Math.max(0, rc.boostPower - dt * 0.18);
     if (rc.stickyT > 0) rc.stickyT -= dt;
     if (rc.bumpCd > 0) rc.bumpCd -= dt;
     const going = r.phase === 'go';
@@ -825,7 +826,8 @@
     let target = going ? r.cruise * rc.speedMul : 0;
     if (rc.isPlayer && !rc.input.gas) target *= IDLE; // up arrow is the gas pedal; let go to slow down
     if (rc.fuel <= 0) target *= 0.6;
-    if (rc.boostT > 0) target *= 1.4;
+    target *= 1 + rc.boostPower;
+    if (rc.boostPower > 0) target = Math.min(target, r.cruise * 1.64); // Stay within the bot jump planner’s supported speeds.
     if (rc.stickyT > 0) target *= 0.55;
     if (rc.input.brake) target *= 0.45;
     if (rc.finished) target = 0;
@@ -895,9 +897,11 @@
     if (rc.grounded) {
       const row = Math.floor(rc.z), lane = laneOf(rc.x), t = tileAt(row, lane);
       if (t === T_BURN && rc.y < 0.1) { kill(rc, 'burn'); return; }
-      if (t === T_BOOST) {
-        if (rc.isPlayer && rc.boostT < BOOST_T - 0.4) { addMsg('BOOST!', '#3bff6b', 44); audio.boost(); vignette('59,255,107', 0.55); }
+      if (t === T_BOOST && rc.boostRow !== row) {
+        rc.boostRow = row;
+        rc.boostPower = Math.min(0.64, rc.boostPower < 0.4 ? 0.4 : rc.boostPower + 0.08);
         rc.boostT = BOOST_T;
+        if (rc.isPlayer) { addMsg(rc.boostPower > 0.4 ? 'BOOST CHAIN!' : 'BOOST!', '#3bff6b', 44); audio.boost(); vignette('59,255,107', 0.55); }
       } else if (t === T_STICKY) {
         if (rc.isPlayer && rc.stickyT <= 0) audio.tone(120, 0.25, 'sawtooth', 0.06, 0, 70);
         rc.stickyT = 0.35;
@@ -1074,6 +1078,7 @@
         platform.gameplayStart();
         if (r.player && r.upAt != null && r.upAt < 0.5) {
           r.player.boostT = BOOST_T;
+          r.player.boostPower = 0.4;
           addMsg('PERFECT START!', '#3bff6b', 46);
           audio.boost();
         }
@@ -1153,13 +1158,17 @@
       cam.x += (f.x * 0.8 - cam.x) * k;
       cam.y += (CAM_UP + clamp(f.y, -0.3, 3) * 0.75 - cam.y) * (1 - Math.exp(-5 * dt));
       cam.z = f.z * ROW_D - CAM_BACK + r.speedView * 0.9 + r.boostView * 0.2;
-      cam.roll += (-(f.vx + f.bump) * 0.012 - cam.roll) * k;
+      cam.roll += (clamp(-(f.vx + f.bump) * 0.022, -0.22, 0.22) - cam.roll) * k;
+      const jumpPitch = f.grounded ? 0 : clamp(f.vy * 0.007, -0.05, 0.05);
+      cam.pitch += (PITCH + jumpPitch - cam.pitch) * (1 - Math.exp(-6 * dt));
+      cam.cosp = Math.cos(cam.pitch); cam.sinp = Math.sin(cam.pitch);
     }
-    r.boostView += ((f.boostT > 0 && f.alive ? 1 : 0) - r.boostView) * Math.min(1, dt * 5);
+    const boostTarget = f.alive ? f.boostPower / 0.4 : 0;
+    r.boostView += (boostTarget - r.boostView) * (1 - Math.exp(-(boostTarget > r.boostView ? 5 : 1.4) * dt));
     // the faster you go, the wider the view (and the closer the camera hugs the rocket)
-    const spd = f.alive ? clamp(f.v / (r.cruise * 1.1), 0, 1) : 0;
+    const spd = f.alive ? clamp(f.v / (r.cruise * 1.1), 0, 1.2) : 0;
     r.speedView += (spd - r.speedView) * Math.min(1, dt * 3);
-    cam.f = FOCAL * (1 - 0.25 * r.speedView - 0.12 * r.boostView);
+    cam.f = FOCAL * Math.max(0.54, 1 - 0.25 * r.speedView - 0.1 * r.boostView);
 
     // engine trails
     for (const rc of r.racers) {
@@ -1463,8 +1472,8 @@
   let PX = 0, PY = 0, PZ = 0, PK = 0;
   function pj(X, Y, Z) {
     const dx = X - cam.x, dy = Y - cam.y + cam.dip, dz = Z - cam.z;
-    let zc = dz * COSP - dy * SINP;
-    const yc = dy * COSP + dz * SINP;
+    let zc = dz * cam.cosp - dy * cam.sinp;
+    const yc = dy * cam.cosp + dz * cam.sinp;
     if (zc < 0.05) zc = 0.05;
     PK = cam.f / zc;
     PX = W / 2 + dx * PK; PY = CY - yc * PK; PZ = zc;
@@ -2225,7 +2234,7 @@
   // speed streaks rushing out from the vanishing point, strongest at the screen edges
   function drawSpeedLines(k, boost) {
     if (k < 0.04) return;
-    const hy = CY - cam.f * Math.tan(PITCH);
+    const hy = CY - cam.f * Math.tan(cam.pitch);
     ctx.globalCompositeOperation = 'lighter';
     ctx.lineCap = 'round';
     for (let i = 0; i < 34; i++) {
