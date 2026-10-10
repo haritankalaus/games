@@ -246,6 +246,20 @@
     return t === T_GAP ? -Infinity : t === T_BLOCK ? BLOCK_H : 0;
   }
 
+  // Keep every boost in a chain, with one ordinary tile between consecutive pads.
+  for (const chunk of CHUNKS) {
+    const spaced = [];
+    let previous = '';
+    for (const row of chunk.rows) {
+      if ([...row].some((tile, lane) => tile === 'B' && previous[lane] === 'B')) {
+        spaced.push(row.replace(/B/g, '='));
+      }
+      spaced.push(row);
+      previous = row;
+    }
+    chunk.rows = spaced;
+  }
+
   function newTrack() { return { rows: [], tint: [], coins: [], n: 0, finish: Infinity, P: null, V: null }; }
   function addRow(tr, s, tint, flip) {
     const row = new Uint8Array(LANES);
@@ -303,7 +317,9 @@
     step({ id: 'jump', key: 'SPACE', touchKey: 'JUMP', text: 'JUMP OVER THE GAP!', gap: tr.n + 9 }, 23);
     add('=======', 9); add('.......', 3); add('=======', 11, 1);
     step({ id: 'boost', key: '', text: 'GREEN PADS = SUPER SPEED!' }, 16);
-    add('=======', 3); add('==BBB==', 4, 2); add('=======', 9, 2);
+    add('=======', 3);
+    for (let i = 0; i < 4; i++) { add('==BBB==', 1, 2); if (i < 3) add('=======', 1, 2); }
+    add('=======', 6, 2);
     step({ id: 'wall', key: 'SPACE', touchKey: 'JUMP', text: 'JUMP OVER THE BARRIER!', gap: tr.n + 9 }, 18);
     add('=======', 9); add('#######', 1, 3); add('=======', 8, 3);
     step({ id: 'red', key: '← →', touchKey: '◀ ▶', text: 'STEER AROUND THE RED PADS!' }, 18);
@@ -1166,12 +1182,12 @@
       cam.pitch += (PITCH + jumpPitch - cam.pitch) * (1 - Math.exp(-6 * dt));
       cam.cosp = Math.cos(cam.pitch); cam.sinp = Math.sin(cam.pitch);
     }
-    const boostTarget = f.alive ? f.boostPower / 0.32 : 0;
+    const boostTarget = f.alive ? f.boostPower / 0.25 : 0;
     r.boostView += (boostTarget - r.boostView) * (1 - Math.exp(-(boostTarget > r.boostView ? 5 : 1.4) * dt));
     // the faster you go, the wider the view (and the closer the camera hugs the rocket)
     const spd = f.alive ? clamp(f.v / (r.cruise * 1.1), 0, 1.2) : 0;
     r.speedView += (spd - r.speedView) * Math.min(1, dt * 3);
-    cam.f = FOCAL * Math.max(0.54, 1 - 0.25 * r.speedView - 0.1 * r.boostView);
+    cam.f = FOCAL * Math.max(0.5, 1 - 0.25 * r.speedView - 0.12 * r.boostView);
 
     // engine trails
     for (const rc of r.racers) {
