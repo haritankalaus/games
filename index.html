@@ -15,6 +15,7 @@
 <h1 id="hero-title">Less scrolling.<br><span class="gradient-word">More playing.</span><span class="title-star" aria-hidden="true">✳</span></h1>
 <p>Pick a world. Find your rhythm. Chase that <em>one more go.</em><br class="desktop-break"> Your next adventure starts right here.</p>
 <div class="hero-actions"><a class="button primary" href="#games">Find my adventure <span aria-hidden="true">↓</span></a><button class="button secondary" id="surprise">Surprise me <span aria-hidden="true">✦</span></button></div>
+<div class="rocket-controls"><button id="launch-rocket" class="launch-button" type="button">Launch the rocket <span aria-hidden="true">↑</span></button><span id="launch-status" role="status" aria-live="polite">Launchpad ready. You’re the commander.</span></div>
 <div class="hero-notes"><span>✧ Free to play</span><span>→ No downloads</span><span>♡ Made for fun</span></div>
 </section>
 <section class="games-section" id="games" aria-labelledby="games-title">
@@ -29,5 +30,33 @@
 <section class="play-banner"><div class="banner-icon" aria-hidden="true">✳</div><div><h2>A little break. A big adventure.</h2><p>No installs. No waiting around. Just choose a game and jump in.</p></div><a href="#games" class="button secondary">Ready, set, play <span aria-hidden="true">→</span></a></section>
 </main>
 <footer><a class="brand" href="./"><span class="brand-icon" aria-hidden="true">✦</span> PLAY PLANET</a><span>Built for the joy of “one more go.”</span><a href="#hero-title">Back to the stars ↑</a></footer>
+<div class="rocket-scene" aria-hidden="true">
+<div class="launch-pad"></div><div class="rocket-smoke"><i></i><i></i><i></i><i></i></div>
+<div class="rocket-vehicle">
+<svg class="rocket-model" viewBox="0 0 120 240" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="hull"><stop stop-color="#536879"/><stop offset=".22" stop-color="#e0e9ed"/><stop offset=".44" stop-color="#fff"/><stop offset=".65" stop-color="#c5d0d8"/><stop offset="1" stop-color="#435265"/></linearGradient>
+<linearGradient id="nose"><stop stop-color="#54364f"/><stop offset=".4" stop-color="#ff8195"/><stop offset=".7" stop-color="#be3859"/><stop offset="1" stop-color="#4b213c"/></linearGradient>
+<linearGradient id="fin"><stop stop-color="#fa657e"/><stop offset="1" stop-color="#5e203c"/></linearGradient>
+<radialGradient id="glass" cx=".3" cy=".25"><stop stop-color="#bafaff"/><stop offset=".35" stop-color="#45bce7"/><stop offset="1" stop-color="#071d37"/></radialGradient>
+<linearGradient id="nozzle" x2="0" y2="1"><stop stop-color="#71808c"/><stop offset="1" stop-color="#182231"/></linearGradient>
+</defs>
+<ellipse cx="60" cy="220" rx="37" ry="7" fill="#000" opacity=".2"/>
+<path d="M39 132L13 180 11 212 43 193Z" fill="url(#fin)" stroke="#de798b" stroke-width="1"/>
+<path d="M81 132L107 180 109 212 77 193Z" fill="url(#fin)" stroke="#742c46" stroke-width="1"/>
+<path d="M37 69Q60 50 83 69L83 178Q82 201 60 204Q38 201 37 178Z" fill="url(#hull)"/>
+<path d="M37 72Q38 37 60 9Q82 37 83 72Z" fill="url(#nose)"/>
+<path d="M48 53Q50 34 60 18" fill="none" stroke="#fff" stroke-opacity=".42" stroke-width="3" stroke-linecap="round"/>
+<ellipse cx="60" cy="72" rx="23" ry="4" fill="#ffb5bf" opacity=".5"/>
+<path d="M38 160H82M39 176H81" stroke="#70818f" stroke-width="2" opacity=".7"/>
+<ellipse cx="60" cy="109" rx="17" ry="19" fill="#334556" stroke="#dbe6eb" stroke-width="3"/>
+<ellipse cx="60" cy="109" rx="12" ry="14" fill="url(#glass)"/>
+<path d="M54 101L61 97" stroke="white" stroke-opacity=".8" stroke-width="3" stroke-linecap="round"/>
+<path d="M48 199L43 217Q60 224 77 217L72 199" fill="url(#nozzle)" stroke="#94a5af"/>
+<path d="M60 154L54 199 60 212 66 199Z" fill="url(#fin)"/>
+<path d="M44 84V149" stroke="white" stroke-opacity=".45" stroke-width="2"/>
+<circle cx="72" cy="147" r="2" fill="#d4ff79"/>
+</svg><div class="rocket-flame"><span></span></div><div class="engine-glow"></div>
+</div></div>
 <div id="confetti" aria-hidden="true"></div>
 </body></html>

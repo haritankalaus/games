@@ -32,3 +32,55 @@ document.querySelector('#surprise').addEventListener('click', event => {
   }
   setTimeout(() => { window.location.href = url; }, reducedMotion.matches ? 0 : 850);
 });
+
+const launchButton = document.querySelector('#launch-rocket');
+const launchStatus = document.querySelector('#launch-status');
+const rocketScene = document.querySelector('.rocket-scene');
+const rocketVehicle = document.querySelector('.rocket-vehicle');
+let rocketFlight = null;
+let launchTimer = null;
+let countdownTimer = null;
+function cornerTransform() {
+  const scene = rocketScene.getBoundingClientRect();
+  return `translate(${Math.max(0, innerWidth - scene.left - scene.width - 18)}px, ${24 - (scene.bottom - rocketVehicle.offsetHeight - 10)}px) rotate(25deg) scale(.55)`;
+}
+function dockRocket() {
+  rocketScene.className = 'rocket-scene docked';
+  rocketVehicle.style.transform = cornerTransform();
+  launchStatus.textContent = 'Orbit reached! Ready for another launch?';
+  launchButton.disabled = false;
+  launchButton.innerHTML = 'Launch again <span aria-hidden="true">↑</span>';
+}
+launchButton.addEventListener('click', () => {
+  rocketFlight?.cancel();
+  clearTimeout(launchTimer);
+  clearInterval(countdownTimer);
+  rocketVehicle.style.transform = '';
+  launchButton.disabled = true;
+  if (reducedMotion.matches) { dockRocket(); return; }
+  rocketScene.className = 'rocket-scene preparing';
+  let count = 3;
+  launchStatus.textContent = 'T−3 · Engines warming up…';
+  countdownTimer = setInterval(() => {
+    count--;
+    if (count > 0) launchStatus.textContent = `T−${count} · ${count === 2 ? 'Fuel pressure ready…' : 'All systems go…'}`;
+    else clearInterval(countdownTimer);
+  }, 900);
+  launchTimer = setTimeout(() => {
+    rocketScene.className = 'rocket-scene flying';
+    launchStatus.textContent = 'Liftoff! Next stop: the stars.';
+    const box = rocketScene.getBoundingClientRect();
+    const dx = Math.max(0, innerWidth - box.left - box.width - 18);
+    const dy = 24 - (box.bottom - rocketVehicle.offsetHeight - 10);
+    rocketFlight = rocketVehicle.animate([
+      { transform: 'translate(0,0) rotate(0deg) scale(1)', offset: 0 },
+      { transform: 'translate(0,-65px) rotate(0deg) scale(1)', offset: .2 },
+      { transform: `translate(${dx * .35}px,${dy * .7}px) rotate(40deg) scale(.85)`, offset: .6 },
+      { transform: cornerTransform(), offset: 1 }
+    ], { duration: 2400, easing: 'cubic-bezier(.45,0,.2,1)', fill: 'forwards' });
+    rocketFlight.onfinish = () => { rocketFlight.cancel(); dockRocket(); };
+  }, 2800);
+});
+window.addEventListener('resize', () => {
+  if (rocketScene.classList.contains('docked')) rocketVehicle.style.transform = cornerTransform();
+});
