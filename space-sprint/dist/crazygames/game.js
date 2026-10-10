@@ -26,7 +26,7 @@
   const IDLE = 0.6;                                            // player speed with the gas released, vs. cruise
   const STEER = 8.5;                 // lanes per second
   const FOCAL = 560, CY = H * 0.42, PITCH = 0.25, COSP = Math.cos(PITCH), SINP = Math.sin(PITCH);
-  const CAM_BACK = 5.2, CAM_UP = 2.0, NEAR = 0.4, DRAW_ROWS = 56; // chase camera: centred right behind the player
+  const CAM_BACK = 7.2, CAM_UP = 2.0, NEAR = 0.4, DRAW_ROWS = 56; // chase camera: centred right behind the player
   const GAP_X = 0.035, GAP_Z = 0.05; // seams between tiles
   const RESPAWN_T = 1.1, GHOST_T = 1.6, BOOST_T = 1.6, FUEL_TIME = 38;
   const FONT = 'Impact, "Arial Black", "Haettenschweiler", sans-serif';
@@ -1469,7 +1469,8 @@
     const yc = dy * COSP + dz * SINP;
     if (zc < 0.05) zc = 0.05;
     PK = cam.f / zc;
-    PX = W / 2 + dx * PK; PY = CY - yc * PK; PZ = zc;
+    // Compress horizontal world projection to expose space beside the deck; lane physics stay in world units.
+    PX = W / 2 + dx * PK * 0.72; PY = CY - yc * PK; PZ = zc;
   }
   function q4(c, x0, y0, z0, x1, y1, z1, x2, y2, z2, x3, y3, z3) {
     ctx.fillStyle = c;
@@ -2376,12 +2377,12 @@
 
     // messages
     r.msgs.forEach((m, i) => {
-      const s = elasticOut(m.t * 2.2);
+      const s = Math.min(1, elasticOut(m.t * 2.2));
       ctx.save();
       ctx.globalAlpha = clamp((1.6 - m.t) * 3, 0, 1);
-      ctx.translate(W / 2, H * 0.26 + i * 52);
+      ctx.translate(W / 2, H * 0.19 + i * 28);
       ctx.scale(s, s);
-      txt(m.text, 0, 0, m.size, m.color);
+      txt(m.text, 0, 0, clamp(m.size * 0.48, 18, 30), m.color);
       ctx.restore();
     });
     ctx.globalAlpha = 1;
@@ -2389,7 +2390,7 @@
     else if (r.t - r.goT < 0.8) {
       const s = 1 + (r.t - r.goT) * 1.5;
       ctx.save(); ctx.globalAlpha = 1 - (r.t - r.goT) / 0.8; ctx.translate(W / 2, H * 0.4); ctx.scale(s, s);
-      txt('GO!', 0, 0, 110, '#3bff6b'); ctx.restore(); ctx.globalAlpha = 1;
+      txt('GO!', 0, 0, 54, '#3bff6b'); ctx.restore(); ctx.globalAlpha = 1;
     }
     drawTutorial(r);
     if (touchMode) drawTouchControls();
