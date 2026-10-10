@@ -1,0 +1,47 @@
+name: Deploy Chain Riders to GitHub Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - chain-riders/index.html
+      - chain-riders/game.js
+      - chain-riders/tools/build.js
+      - .github/workflows/chain-riders-pages.yml
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build standalone game
+        working-directory: chain-riders
+        run: npm run build
+      - uses: actions/configure-pages@v5
+      - name: Prepare site
+        run: |
+          mkdir -p _site/chain-riders
+          cp chain-riders/dist/itch/index.html chain-riders/dist/itch/game.js _site/chain-riders/
+          cp chain-riders/dist/itch/index.html chain-riders/dist/itch/game.js _site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

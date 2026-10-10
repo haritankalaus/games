@@ -17,7 +17,7 @@ npm run build    # dist/chain-riders-itch.zip and dist/chain-riders-crazygames.z
 
 | Keyboard | Touch | Action |
 |---|---|---|
-| ↑ / W | automatic | Gas |
+| automatic (↑ / W for countdown boost) | automatic | Gas |
 | ↓ / S | BRAKE | Brake |
 | ← → / A D | ◀ ▶ | Steer |
 | SPACE (or X / K) | KICK | Kick (auto-aims; knocks rivals sideways into traffic) |
@@ -41,3 +41,7 @@ npm run build    # dist/chain-riders-itch.zip and dist/chain-riders-crazygames.z
 The `<!-- PLATFORM_SDK -->` placeholder in `index.html` is replaced by `tools/build.js`:
 it is empty for itch.io and becomes the CrazyGames SDK script tag for CrazyGames. Off CrazyGames the
 game uses localStorage for saves.
+
+## Playtest update
+
+Acceleration is automatic on keyboard and touch. The first two courses have gentler turns, and new players face less traffic and recover faster from crashes. In-race hints explain steering, braking and the three-hit combat challenge ($200 per race). Finishing earns a $200 ride bonus; wrecking earns $100 with free repairs. The garage highlights affordable upgrades. Midgame ads start after the third completed race. Existing saves remain compatible.

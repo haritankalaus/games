@@ -366,14 +366,14 @@
     const rng = seeded(level * 7919 + 13);
     theme = THEMES[(level - 1) % THEMES.length];
     segments = [];
-    const target = 1700 + Math.min(level, 8) * 250;
+    const target = level === 1 ? 1100 : level === 2 ? 1450 : 1700 + Math.min(level, 8) * 250;
     addRoad(0, 90, 0, 0, 0);
     while (segments.length < target) {
       const len = pick([25, 40, 60, 80], rng);
       const curve = rng() < 0.3 ? 0 : (rng() < 0.5 ? -1 : 1) * pick([2, 3, 4, 6], rng);
       let hill = 0;
       if (rng() < 0.6) hill = (rng() * 2 - 1) * 50 - lastY() / SEG_LEN;
-      addRoad(len, len, len, curve, hill);
+      addRoad(len, len, len, level <= 2 ? curve * 0.55 : curve, hill);
     }
     addRoad(40, 40, 40, 0, -lastY() / SEG_LEN);
     const finishIdx = segments.length + 20;
@@ -421,7 +421,7 @@
 
   // start-of-race tutorial cards (keyboard and touch variants)
   const TUT_KEYS = [
-    { id: 'up', key: '↑', label: 'GAS', codes: ['ArrowUp', 'KeyW'] },
+    { id: 'up', key: 'AUTO', label: 'GAS', codes: ['ArrowUp', 'KeyW'] },
     { id: 'steer', key: '← →', label: 'STEER', codes: ['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'] },
     { id: 'kick', key: 'SPACE', label: 'KICK!', codes: ['Space', 'KeyX', 'KeyK'], star: true, wide: true },
     { id: 'pl', key: 'Z', label: 'PUNCH ◀', codes: ['KeyZ', 'KeyJ'] },
@@ -447,7 +447,8 @@
       time: 0, clock: 0, kos: 0, cash: 0, msgs: [], shake: 0, slowmo: 0, flash: 0, paused: false,
       phase: 'intro', introT: 0, countdown: 3, goT: 0, waitStart: save.races < 2, startPressed: false,
       upAt: null, boost: 0, rev: 0, combo: 0, comboT: 0, dda: L === 1 ? 0.95 : 1,
-      tut: {}, rivals: [], cars: [], brake: false,
+      tut: { up: { done: true, pop: 0 } }, rivals: [], cars: [], brake: false, hits: 0,
+      rookie: save.races < 2,
       _sy: H - 6, _s: CAM_DEPTH / PLAYER_Z * HALF_W,
     };
     save.weapon = null;
@@ -467,7 +468,7 @@
         finished: false, laneT: rand(1, 4), hunt: false, prefGap: rand(-250, 450), stun: 0, say: '', sayT: 0,
       });
     }
-    for (let i = 0, n = Math.min(16, 4 + 2 * L); i < n; i++) {
+    for (let i = 0, n = Math.min(16, (race.rookie ? 1 : 4) + 2 * L); i < n; i++) {
       const c = {};
       spawnCar(c, PLAYER_Z + GRID_Z + 8000 + i * rand(9000, 14000));
       race.cars.push(c);
@@ -506,12 +507,12 @@
   function crashPlayer(bikeDmg, label) {
     const r = race;
     r.state = 'crashed';
-    r.crashT = CRASH_TIME;
+    r.crashT = r.rookie ? 1.4 : CRASH_TIME;
     r.crashSide = Math.random() < 0.5 ? -1 : 1;
     r.attack = null;
     r.boost = 0;
     r.combo = 0;
-    r.bike = Math.max(0, r.bike - bikeDmg * Math.min(1, 0.5 + 0.1 * save.level)); // forgiving early levels
+    r.bike = Math.max(0, r.bike - bikeDmg * (r.rookie ? 0.35 : Math.min(1, 0.5 + 0.1 * save.level))); // forgiving early levels
     r.slowmo = 0.7;
     r.shake = 1;
     r.dda = Math.max(0.85, r.dda - 0.04); // ease off after every crash
@@ -550,6 +551,7 @@
     if (!best) return;
     const dmg = kick ? 14 : wpn === 'chain' ? 26 : wpn === 'club' ? 22 : 13;
     best.health -= dmg;
+    r.hits++;
     best.flash = 1;
     best.x += a.side * (kick ? 0.42 : 0.07);
     best.targetX = best.x;
@@ -699,7 +701,7 @@
       if (control) {
         if (keys.left) steer = -1; else if (keys.right) steer = 1;
         r.playerX += steer * dt * 2 * Math.min(1, spd);
-        const gas = keys.up || (touchMode && !keys.down);
+        const gas = !keys.down;
         if (keys.down) { r.speed -= r.maxSpeed * dt; r.brake = true; }
         else if (gas) r.speed += (r.maxSpeed / (r.boost > 0 ? 2.5 : 5)) * dt;
         else r.speed -= (r.maxSpeed / 5) * dt;
@@ -748,10 +750,10 @@
           r.wrecked = true; r.over = true; r.endT = 1.2;
         } else {
           r.state = 'ride';
-          r.speed = 0;
-          r.playerX = clamp(r.playerX, -0.9, 0.9);
+          r.speed = r.maxSpeed * 0.35;
+          r.playerX = clamp(r.playerX, -0.7, 0.7);
           if (r.health <= 0) r.health = Math.round(r.maxHealth * 0.6);
-          r.invuln = 1.5;
+          r.invuln = 3;
         }
       }
     }
@@ -962,13 +964,15 @@
     const r = race;
     platform.gameplayStop();
     const prize = r.wrecked ? 0 : PRIZES[r.place - 1] * save.level;
-    const repair = r.wrecked ? Math.min(save.money + r.cash, 250 * save.level) : 0;
-    save.money += r.cash + prize - repair;
+    const repair = 0; // Repairs are free: a setback should not erase upgrade progress.
+    const completion = r.wrecked ? 100 : 200;
+    const challenge = r.hits >= 3 ? 200 : 0;
+    save.money += r.cash + prize + completion + challenge - repair;
     save.races++;
     const qualified = !r.wrecked && r.place <= 3;
     if (qualified) save.level++;
     writeSave();
-    results = { place: r.place, prize, kos: r.kos, cash: r.cash, repair, qualified, wrecked: r.wrecked, time: r.time, bonusUsed: false };
+    results = { completion, challenge, place: r.place, prize, kos: r.kos, cash: r.cash, repair, qualified, wrecked: r.wrecked, time: r.time, bonusUsed: false };
     state = 'results';
   }
 
@@ -1000,7 +1004,8 @@
 
   function continueFromResults() {
     state = 'ad';
-    platform.midgameAd(() => goShop());
+    if (save.races < 3) goShop();
+    else platform.midgameAd(() => goShop());
   }
 
   function goShop() {
@@ -1031,8 +1036,7 @@
     race.paused = p;
     for (const k in keys) keys[k] = false;
     activePointers.clear();
-    if (manual) { if (p) platform.gameplayStop(); else platform.gameplayStart(); }
-    else if (!p) platform.gameplayStart();
+    if (p) platform.gameplayStop(); else platform.gameplayStart();
   }
 
   function portraitBlocked() { return touchMode && window.innerHeight > window.innerWidth * 1.05; }
@@ -1701,7 +1705,7 @@
       ctx.save();
       ctx.translate(W / 2, 372);
       ctx.scale(p, p);
-      txt(touchMode ? 'TAP TO GO!' : 'PRESS ↑ TO GO!', 0, 0, 42, `hsl(${(t * 200) % 360},100%,65%)`);
+      txt(touchMode ? 'TAP TO GO!' : 'ENTER TO GO!', 0, 0, 42, `hsl(${(t * 200) % 360},100%,65%)`);
       ctx.restore();
     } else if (r.phase === 'countdown') {
       txt(touchMode ? 'Tap just before GO for a PERFECT START!' : 'Hit ↑ just before GO for a PERFECT START!', W / 2, 368, 22, '#fff');
@@ -1826,6 +1830,16 @@
       ctx.restore();
     });
 
+    if (r.phase === 'go' && !r.over && !r.paused) {
+      let hint = '';
+      if (r.goT < 7) hint = touchMode ? 'AUTO GAS · ◀ ▶ STEER · FINISH TOP 3' : 'AUTO GAS · ← → STEER · FINISH TOP 3';
+      else if (Math.abs(r.playerX) > 0.85) hint = touchMode ? 'STEER BACK TO THE ROAD · BRAKE FOR BENDS' : 'STEER BACK TO THE ROAD · ↓ BRAKE FOR BENDS';
+      else if (near && r.hits < 3) hint = touchMode ? 'GET ALONGSIDE + TAP KICK! · 3 HITS = $200' : 'GET ALONGSIDE + SPACE TO KICK! · 3 HITS = $200';
+      else if (r.hits < 3 && r.goT < 22) hint = 'RACE CHALLENGE: LAND 3 HITS FOR $200';
+      else if (r.hits >= 3 && r.goT < 30) hint = '3 HITS COMPLETE! · $200 AT THE FINISH';
+      if (hint) { const y = touchMode ? 196 : 96; panel(touchMode ? 220 : 170, y, touchMode ? 520 : 620, 34); txt(hint, W / 2, y + 24, touchMode ? 17 : 20, '#ffd400'); }
+    }
+
     drawIntro(r);
     drawCountdown(r);
 
@@ -1879,7 +1893,7 @@
       txt('Gas is automatic  ·  ◀ ▶ steer  ·  BRAKE to slow down', W / 2, 422, 20, '#fff', 'center', false);
       txt('KICK and 👊 PUNCH buttons to fight', W / 2, 452, 20, '#ffd400', 'center', false);
     } else {
-      txt('↑ gas   ↓ brake   ← → steer   (or WASD)', W / 2, 422, 20, '#fff', 'center', false);
+      txt('AUTO GAS   ·   ↓ brake   ·   ← → steer (or A/D)', W / 2, 422, 20, '#fff', 'center', false);
       txt('SPACE kick   ·   Z punch left   ·   C punch right', W / 2, 452, 20, '#ffd400', 'center', false);
     }
     txt('Knock rivals out to steal their weapons · Top 3 advances', W / 2, 482, 18, '#bbb', 'center', false);
@@ -1906,7 +1920,9 @@
       uiButtons.push({ x, y, w, h, fn: () => buy(i) });
     });
     button(W / 2 - 150, 462, 300, 52, touchMode ? 'RACE!' : 'RACE!  (ENTER)', startRace);
+    const upgrade = SHOP.find(it => !it.oneShot && shopLevel(it) < it.max && save.money >= it.cost(shopLevel(it)));
     if (toast) txt(toast.text, W / 2, H - 10, 20, '#fff');
+    else txt(upgrade ? `UPGRADE READY: ${upgrade.name} · TAP ITS ROW` : 'EVERY RIDE EARNS CASH · 3 COMBAT HITS = $200 EXTRA', W / 2, H - 10, 18, '#ffd400');
   }
 
   function drawResults() {
@@ -1917,8 +1933,8 @@
     else txt(`${ordinal(R.place).toUpperCase()} PLACE`, W / 2, 140, 78, R.qualified ? '#7CFC00' : '#ffd400');
     const rows = [
       ['Time', fmtTime(R.time)],
-      ['Prize money', `$${R.prize}`],
-      [`Knockouts (${R.kos}) & combos`, `$${R.cash}`],
+      ['Prize + ride bonus', `$${R.prize + R.completion}`],
+      [`Combat + 3-hit challenge`, `$${R.cash + R.challenge}`],
     ];
     if (R.repair) rows.push(['Bike repairs', `-$${R.repair}`]);
     rows.push(['Bank', `$${save.money}`]);
