@@ -594,28 +594,38 @@
     hover() { this.tone(1760, 0.04, 'sine', 0.035); },
   };
 
-  // synthwave loop at 128 bpm: Am F C G with kick, snare, hats, bass, pad and arpeggio
+  // Original 140 BPM retro-techno sequencer: four-on-the-floor drums, acid bass and chip arpeggios.
   const music = {
     next: 0, step: 0,
-    CHORDS: [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]],
-    ARP: [0, 1, 2, 1, 2, 0, 1, 2, 0, 2, 1, 2, 0, 1, 2, 1],
+    CHORDS: [[52, 55, 59], [48, 52, 55], [45, 48, 52], [47, 51, 54]],
+    ARP: [0, 2, 1, 2, 0, 1, 2, 1, 0, 2, 1, 0, 2, 1, 2, 1],
     tick() {
       const a = audio;
       if (!a.ac || a.muted || a.adMuted || a.ac.state !== 'running') return;
-      const ac = a.ac, dur = 60 / 128 / 4, M = a.mus;
+      const ac = a.ac, dur = 60 / 140 / 4, M = a.mus;
       if (this.next < ac.currentTime) this.next = ac.currentTime + 0.05;
       while (this.next < ac.currentTime + 0.15) {
         const s = this.step % 64, ch = this.CHORDS[Math.floor(s / 16)], i = s % 16, t = this.next;
-        if (i % 4 === 0) a.tone(150, 0.18, 'sine', 0.42, t, 40, M);
-        if (i === 4 || i === 12) { a.noise(0.18, 0.22, 1800, t, M); a.tone(200, 0.09, 'triangle', 0.08, t, 120, M); }
-        if (i % 2 === 1) a.noise(0.035, 0.08, 9000, t, M, 0, 'highpass');
-        if (i % 2 === 0) {
-          const n = midiHz(ch[0] - 24 + (i % 4 === 2 ? 12 : 0));
-          a.tone(n, dur * 1.7, 'triangle', 0.12, t, 0, M);
-          a.tone(n * 1.005, dur * 1.2, 'sawtooth', 0.025, t, 0, M);
+        const racing = state === 'race' && race && !race.paused;
+        const intensity = racing ? 1 + Math.min(0.25, race.boostView * 0.12) : 0.8;
+        if (i % 4 === 0) {
+          a.tone(170, 0.2, 'sine', 0.44, t, 38, M);
+          a.noise(0.018, 0.07, 2800, t, M, 0, 'highpass');
         }
-        if (i === 0) for (const m of ch) a.tone(midiHz(m), dur * 15, 'sine', 0.035, t, 0, M, 0.25);
-        a.tone(midiHz(ch[this.ARP[i]] + 12 + (s >= 32 && i >= 8 ? 12 : 0)), dur * 0.8, 'square', 0.02, t, 0, M);
+        if (i === 4 || i === 12) {
+          for (let c = 0; c < 3; c++) a.noise(0.075, 0.085, 2100, t + c * 0.012, M);
+          a.tone(180, 0.07, 'triangle', 0.06, t, 100, M);
+        }
+        a.noise(i % 4 === 2 ? 0.1 : 0.025, i % 2 ? 0.045 : 0.025, 8500, t, M, 0, 'highpass');
+        if ([0, 2, 3, 6, 8, 10, 11, 14].includes(i)) {
+          const n = midiHz(ch[0] - 12 + (i === 3 || i === 11 ? 12 : 0));
+          a.tone(n, dur * 0.85, 'sawtooth', 0.055, t, n * 0.94, M);
+          a.tone(n / 2, dur * 1.1, 'sine', 0.105, t, 0, M);
+        }
+        const duck = i % 4 === 0 ? 0.4 : 1;
+        a.tone(midiHz(ch[this.ARP[i]] + 12), dur * 0.55, 'square', 0.024 * intensity * duck, t, 0, M);
+        if (i === 2 || i === 10) for (const m of ch) a.tone(midiHz(m + 12), dur * 1.4, 'sawtooth', 0.016, t, 0, M, 0.015);
+        if (racing && race.boostView > 0.8 && i % 2) a.tone(midiHz(ch[this.ARP[i]] + 24), dur * 0.4, 'triangle', 0.025, t, 0, M);
         this.next += dur;
         this.step++;
       }
@@ -2352,6 +2362,45 @@
     g.addColorStop(0, `rgba(${v.c},0)`); g.addColorStop(1, `rgba(${v.c},${clamp(v.a, 0, 1)})`);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   }
+  function drawFlightHUD(r, p) {
+    const line = (...points) => { ctx.beginPath(); ctx.moveTo(points[0], points[1]); for (let i = 2; i < points.length; i += 2) ctx.lineTo(points[i], points[i + 1]); ctx.stroke(); };
+    const poly = (color, ...points) => { ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(points[0], points[1]); for (let i = 2; i < points.length; i += 2) ctx.lineTo(points[i], points[i + 1]); ctx.closePath(); ctx.fill(); };
+    r.hudSpeed = lerp(r.hudSpeed ?? p.v, p.v, 0.22);
+    const speed = clamp(r.hudSpeed / MAX_SPEED, 0, 1), fuel = clamp(p.fuel / 100, 0, 1);
+    const boosting = p.boostT > 0;
+    const cyan = boosting ? '#9dffb8' : '#58eaff';
+    const fuelColor = fuel > 0.25 ? '#ffca69' : '#ff657b';
+    ctx.save();
+    // Lean the instrument into the world, keeping the road centre clear.
+    ctx.transform(1, -0.13, 0.25, 1, 22, touchMode ? H - 270 : H - 120);
+    ctx.fillStyle = 'rgba(3,14,28,0.78)';
+    poly(ctx.fillStyle, 0, 0, 240, 0, 263, 24, 263, 105, 0, 105);
+    ctx.strokeStyle = cyan; ctx.lineWidth = 1.5;
+    line(0, 105, 0, 0, 240, 0, 263, 24, 263, 105, 0, 105);
+    ctx.fillStyle = cyan; ctx.fillRect(0, 0, 4, 105);
+    txt(String(Math.round(p.v * SPEED_TO_MPH)).padStart(3, '0'), 16, 47, 45, '#f0fcff', 'left');
+    txt('MPH', 108, 46, 14, cyan, 'left', false);
+    txt(boosting ? 'BOOST LINK' : 'VELOCITY', 247, 22, 10, cyan, 'right', false);
+    txt(`${Math.round(p.fuel)}%`, 247, 91, 14, fuelColor, 'right', false);
+    txt('FUEL', 15, 91, 12, fuelColor, 'left', false);
+    ctx.shadowColor = cyan; ctx.shadowBlur = boosting ? 10 + Math.sin(blink * 12) * 3 : 5;
+    for (let i = 0; i < 24; i++) {
+      const x = 16 + i * 9.5;
+      ctx.fillStyle = i / 24 < speed ? cyan : '#1b3543';
+      poly(ctx.fillStyle, x, 55, x + 7, 55, x + 10, 66, x + 3, 66);
+    }
+    ctx.shadowBlur = 0;
+    for (let i = 0; i < 20; i++) {
+      ctx.fillStyle = i / 20 < fuel ? fuelColor : '#332e2d';
+      ctx.fillRect(58 + i * 7, 81, 5, 9);
+    }
+    if (fuel < 0.25 && Math.floor(blink * 4) % 2) txt('LOW', 247, 68, 12, '#ff657b', 'right', false);
+    // A travelling highlight gives the telemetry a live, retro display feel.
+    ctx.globalAlpha = 0.16;
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(14 + (blink * 40 % 225), 52, 2, 42);
+    ctx.restore();
+  }
+
   function drawHUD() {
     const r = race, p = r.player;
     // name tags + speech bubbles
@@ -2390,10 +2439,7 @@
       hudRow(12, 44, 176, 'TIME', time, '#ffffff');
     }
     hudRow(12, 76, 176, 'COINS', String(r.coins), '#ffd84a', 1 + r.coinPop * 0.35);
-    hudRow(W - 222, 12, 210, 'SPEED', `${Math.round(p.v * SPEED_TO_MPH)} mph`, p.boostT > 0 ? '#3bff6b' : '#ffffff', 1, true);
-    hudRow(W - 222, 44, 210, 'FUEL', '', '#ffffff', 1, true);
-    bar(W - 140, 53, 116, 10, p.fuel / 100, p.fuel > 50 ? '#19a6ff' : p.fuel > 25 ? '#ffd400' : '#ff4f4f');
-    if (p.fuel < 25 && Math.floor(blink * 4) % 2) txt('LOW FUEL', W - 82, 92, 17, '#ff4f4f');
+    drawFlightHUD(r, p);
     if (r.mode === 'level' && r.t < 4) txt(`LEVEL ${r.lvl} — ${r.def.name}`, W / 2, 40, 24, '#fff');
     // floating +1s
     for (const fl of r.floaters) {
@@ -2843,7 +2889,7 @@
     platform.loadingStop();
     if (DEBUG) {
       window.__sprint = {
-        get race() { return race; }, get state() { return state; }, get track() { return track; }, get camera() { return { ...cam }; }, save,
+        get race() { return race; }, get state() { return state; }, get track() { return track; }, get camera() { return { ...cam }; }, get music() { return { step: music.step, contextState: audio.ac?.state, bpm: 140 }; }, save,
         start(i) { startLevel(i); }, endless() { startEndless(); },
         autopilot() { race.autopilot = true; race.player.react = 0.08; },
         touch() { touchMode = true; },
