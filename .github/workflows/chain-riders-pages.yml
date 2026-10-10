@@ -1,10 +1,15 @@
-name: Deploy Chain Riders to GitHub Pages
+name: Deploy Play Planet to GitHub Pages
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
+      - index.html
+      - arcade.css
+      - arcade.js
+      - space-sprint/**
+      - chain-riders/store-assets/**
       - chain-riders/index.html
       - chain-riders/game.js
       - chain-riders/tools/build.js
@@ -33,12 +38,18 @@ jobs:
       - name: Build standalone game
         working-directory: chain-riders
         run: npm run build
+      - name: Build Rocket Skyway
+        working-directory: space-sprint
+        run: npm run build
       - uses: actions/configure-pages@v5
       - name: Prepare site
         run: |
-          mkdir -p _site/chain-riders
+          mkdir -p _site/chain-riders/store-assets _site/space-sprint/store-assets
           cp chain-riders/dist/itch/index.html chain-riders/dist/itch/game.js _site/chain-riders/
-          cp chain-riders/dist/itch/index.html chain-riders/dist/itch/game.js _site/
+          cp space-sprint/dist/itch/index.html space-sprint/dist/itch/game.js _site/space-sprint/
+          cp index.html arcade.css arcade.js _site/
+          cp chain-riders/store-assets/cover-landscape.png _site/chain-riders/store-assets/
+          cp space-sprint/store-assets/cover-landscape.png _site/space-sprint/store-assets/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

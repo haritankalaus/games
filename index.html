@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#17142c"><meta name="description" content="Big adventures. One click away. Race motorcycles in Chain Riders or jump into space in Rocket Skyway. Free browser games, ready to play.">
+<title>Play Planet — Pick your adventure</title>
+<link rel="stylesheet" href="arcade.css"><script src="arcade.js" defer></script>
+</head>
+<body>
+<div class="sky" aria-hidden="true"><span class="planet planet-one"></span><span class="planet planet-two"></span><span class="orbit"></span><span class="spark s1">✦</span><span class="spark s2">✧</span><span class="spark s3">✦</span></div>
+<header class="nav"><a class="brand" href="./" aria-label="Play Planet home"><span class="brand-icon" aria-hidden="true">✦</span> PLAY PLANET</a><a class="nav-link" href="#games">Explore games <span aria-hidden="true">↓</span></a></header>
+<main>
+<section class="hero" aria-labelledby="hero-title">
+<div class="eyebrow"><span class="status-dot"></span> SMALL PLANET. BIG ADVENTURES.</div>
+<h1 id="hero-title">Less scrolling.<br><span class="gradient-word">More playing.</span><span class="title-star" aria-hidden="true">✳</span></h1>
+<p>Pick a world. Find your rhythm. Chase that <em>one more go.</em><br class="desktop-break"> Your next adventure starts right here.</p>
+<div class="hero-actions"><a class="button primary" href="#games">Find my adventure <span aria-hidden="true">↓</span></a><button class="button secondary" id="surprise">Surprise me <span aria-hidden="true">✦</span></button></div>
+<div class="hero-notes"><span>✧ Free to play</span><span>→ No downloads</span><span>♡ Made for fun</span></div>
+</section>
+<section class="games-section" id="games" aria-labelledby="games-title">
+<div class="section-heading"><div><div class="eyebrow">THE ADVENTURE MENU</div><h2 id="games-title">Two worlds. <span>Your move.</span></h2></div><span class="game-count">02 GAMES / ENDLESS GOOD TIMES</span></div>
+<div class="filters" role="group" aria-label="Filter games"><button class="filter active" data-filter="all" aria-pressed="true">All adventures <span>2</span></button><button class="filter" data-filter="road" aria-pressed="false">Road rebels</button><button class="filter" data-filter="space" aria-pressed="false">Space explorers</button></div>
+<div class="game-grid">
+<article class="game-card road" data-category="road"><a class="art-link" href="chain-riders/" aria-label="Play Chain Riders"><div class="game-art"><img src="chain-riders/store-assets/cover-landscape.png" alt="Colorful motorcycle racers on the open road" width="1920" height="1080"><span class="art-shade"></span><span class="badge">PEDAL TO THE METAL</span><span class="play-bubble" aria-hidden="true">→</span><span class="art-caption">RULE THE<br>OPEN ROAD.</span></div></a><div class="card-body"><div class="tags"><span>RACING</span><span>ARCADE COMBAT</span><span class="card-number">01</span></div><h3>Chain Riders</h3><p>Hit the highway, outsmart the pack, and turn your trusty bike into a racing legend.</p><div class="card-bottom"><span class="control-note">← → steer · SPACE kick</span><a class="button play" href="chain-riders/">Let's ride <span aria-hidden="true">→</span></a></div></div></article>
+<article class="game-card space" data-category="space"><a class="art-link" href="space-sprint/" aria-label="Play Rocket Skyway"><div class="game-art"><img src="space-sprint/store-assets/cover-landscape.png" alt="A rocket racing along a colorful skyway above the clouds" width="1920" height="1080"><span class="art-shade"></span><span class="badge">NEXT STOP: THE STARS</span><span class="play-bubble" aria-hidden="true">→</span><span class="art-caption">TAKE THE<br>SKYWAY.</span></div></a><div class="card-body"><div class="tags"><span>SPACE RACING</span><span>JUMP & DODGE</span><span class="card-number">02</span></div><h3>Rocket Skyway</h3><p>Leap across floating tracks, scoop up coins, and race your rocket above the clouds.</p><div class="card-bottom"><span class="control-note">↑ gas · ← → steer · SPACE jump</span><a class="button play" href="space-sprint/">Lift off <span aria-hidden="true">→</span></a></div></div></article>
+</div>
+<p class="filter-status sr-only" role="status" id="filter-status">Showing both games.</p>
+</section>
+<section class="play-banner"><div class="banner-icon" aria-hidden="true">✳</div><div><h2>A little break. A big adventure.</h2><p>No installs. No waiting around. Just choose a game and jump in.</p></div><a href="#games" class="button secondary">Ready, set, play <span aria-hidden="true">→</span></a></section>
+</main>
+<footer><a class="brand" href="./"><span class="brand-icon" aria-hidden="true">✦</span> PLAY PLANET</a><span>Built for the joy of “one more go.”</span><a href="#hero-title">Back to the stars ↑</a></footer>
+<div id="confetti" aria-hidden="true"></div>
+</body></html>
