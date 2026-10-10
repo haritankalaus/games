@@ -24,6 +24,8 @@
   const JUMP_T = 2 * JUMP_V / GRAV, PAD_T = 2 * PAD_V / GRAV; // air time over flat ground
   const GAP_T = 0.667;                                         // gap sizing in track pieces (kept from the snappier jump)
   const IDLE = 0.6;                                            // player speed with the gas released, vs. cruise
+  const SPEED_TO_MPH = 62, MAX_SPEED = 977 / SPEED_TO_MPH;
+  const MAX_CRUISE = MAX_SPEED / 1.2; // Leave room for several boosts, even on later courses.
   const STEER = 8.5;                 // lanes per second
   const FOCAL = 560, CY = H * 0.42, PITCH = 0.25, COSP = Math.cos(PITCH), SINP = Math.sin(PITCH);
   const CAM_BACK = 4.6, CAM_UP = 2.0, NEAR = 0.4, DRAW_ROWS = 56; // chase camera: centred right behind the player
@@ -164,7 +166,7 @@
     const skill = (i - 1) / (LEVELS - 1);
     return {
       i, name: LEVEL_NAMES[i - 1], theme: THEMES[Math.min(THEMES.length - 1, Math.floor((i - 1) / 3))],
-      seed: 1000 + i * 97, rows: 400 + i * 60, cruise: 10.5 + (i - 1) * 0.38, maxD: Math.min(5, Math.ceil(i / 2.4)), skill,
+      seed: 1000 + i * 97, rows: 400 + i * 60, cruise: Math.min(MAX_CRUISE, 10.5 + (i - 1) * 0.38), maxD: Math.min(5, Math.ceil(i / 2.4)), skill,
     };
   }
 
@@ -340,7 +342,7 @@
       }
     }
   }
-  const endlessCruise = (z) => Math.min(17, 11 + z / 260);
+  const endlessCruise = (z) => Math.min(MAX_CRUISE, 11 + z / 260);
   function buildEndlessTrack(seed) {
     const tr = track = newTrack();
     tr.gen = {
@@ -731,7 +733,7 @@
         const p = pilots[i];
         const b = makeRacer({
           name: p.name, color: p.color, trail: p.trail, x: l - MID, z, safeZ: z, safeL: l, target: l, num: String(11 + i * 11).padStart(2, '0'),
-          base: mode === 'demo' ? 1 : 0.9 + def.skill * 0.08 + rnd() * 0.08,
+          base: mode === 'demo' ? 1 : 0.87 + def.skill * 0.08 + rnd() * 0.08,
           mistake: 0.14 - def.skill * 0.1, react: 0.14 - def.skill * 0.07, aggro: i % 2 ? 0.25 + def.skill * 0.2 : 0,
         });
         if (mode === 'level' && i === 0) Object.assign(b, { buddy: true, aggro: 0, mistake: b.mistake * 0.5 });
@@ -770,7 +772,7 @@
       if (why !== 'fall') audio.crash(); else audio.tone(500, 0.6, 'sawtooth', 0.08, 0, 80);
       const buddy = r.bots.find((b) => b.buddy);
       if (buddy && buddy.alive && Math.random() < 0.6) say(buddy, BUDDY_WAIT);
-      addMsg(why === 'fall' ? 'WHOOPS!' : why === 'burn' ? 'TOO HOT!' : 'CRASH!', '#ff6a3a', 56);
+      addMsg(why === 'fall' ? 'WHOOPS!' : why === 'burn' ? 'HAZARD HIT!' : 'CRASH!', '#ff6a3a', 56);
       if (r.mode === 'endless') r.endT = 1.4;
     } else {
       if (!r.demo && why !== 'fall' && Math.abs(rc.z - r.focus.z) < 20) audio.crash(0.35);
@@ -817,7 +819,7 @@
     }
     if (rc.ghostT > 0) rc.ghostT -= dt;
     if (rc.boostT > 0) rc.boostT = Math.max(0, rc.boostT - dt);
-    else rc.boostPower = Math.max(0, rc.boostPower - dt * 0.18);
+    else rc.boostPower = Math.max(0, rc.boostPower - dt * 0.1);
     if (rc.stickyT > 0) rc.stickyT -= dt;
     if (rc.bumpCd > 0) rc.bumpCd -= dt;
     const going = r.phase === 'go';
@@ -827,12 +829,13 @@
     if (rc.isPlayer && !rc.input.gas) target *= IDLE; // up arrow is the gas pedal; let go to slow down
     if (rc.fuel <= 0) target *= 0.6;
     target *= 1 + rc.boostPower;
-    if (rc.boostPower > 0) target = Math.min(target, r.cruise * 1.64); // Stay within the bot jump planner’s supported speeds.
+    if (rc.boostPower > 0) target = Math.min(target, MAX_SPEED); // Stay within the bot jump planner’s supported speeds.
     if (rc.stickyT > 0) target *= 0.55;
     if (rc.input.brake) target *= 0.45;
     if (rc.finished) target = 0;
     const accel = target > rc.v ? (rc.boostT > 0 ? 20 : 7) : rc.finished ? 5 : rc.input.brake || rc.stickyT > 0 ? 14 : 8;
-    rc.v += clamp(target - rc.v, -accel * dt, accel * dt);
+    target = Math.min(target, MAX_SPEED);
+    rc.v = Math.min(MAX_SPEED, rc.v + clamp(target - rc.v, -accel * dt, accel * dt));
 
     // steering works in the air too, as in SkyRoads
     rc.vx += clamp((going ? rc.input.dir : 0) * STEER - rc.vx, -70 * dt, 70 * dt);
@@ -899,9 +902,9 @@
       if (t === T_BURN && rc.y < 0.1) { kill(rc, 'burn'); return; }
       if (t === T_BOOST && rc.boostRow !== row) {
         rc.boostRow = row;
-        rc.boostPower = Math.min(0.64, rc.boostPower < 0.4 ? 0.4 : rc.boostPower + 0.08);
+        rc.boostPower = Math.min(0.5, rc.boostPower + 0.06);
         rc.boostT = BOOST_T;
-        if (rc.isPlayer) { addMsg(rc.boostPower > 0.4 ? 'BOOST CHAIN!' : 'BOOST!', '#3bff6b', 44); audio.boost(); vignette('59,255,107', 0.55); }
+        if (rc.isPlayer) { addMsg(rc.boostPower > 0.06 ? 'BOOST CHAIN!' : 'BOOST!', '#3bff6b', 44); audio.boost(); vignette('59,255,107', 0.55); }
       } else if (t === T_STICKY) {
         if (rc.isPlayer && rc.stickyT <= 0) audio.tone(120, 0.25, 'sawtooth', 0.06, 0, 70);
         rc.stickyT = 0.35;
@@ -1043,10 +1046,10 @@
         const pv = p.alive ? Math.max(p.v, race.cruise * IDLE) / race.cruise : IDLE;
         // it may crawl to wait for you, but only on a long clear stretch (slow ships can't clear gaps)
         const lo = b.grounded && clearAhead(Math.floor(b.z), clamp(laneOf(b.x), 0, LANES - 1), 7) ? 0.2 : 0.6;
-        b.speedMul = late ? 0.97 + clamp(gap * 0.004, -0.03, 0.05) : clamp(pv + (gap - want) * 0.08, lo, 1.45);
+        b.speedMul = late ? 0.94 + clamp(gap * 0.004, -0.03, 0.04) : clamp(pv * 0.97 + (gap - want) * 0.06, lo, 1.25);
         continue;
       }
-      b.speedMul = b.base + (late ? clamp(gap * 0.002, -0.05, 0.06) : clamp(gap * 0.005, -0.12, 0.16));
+      b.speedMul = b.base + (late ? clamp(gap * 0.002, -0.05, 0.06) : clamp(gap * 0.004, -0.12, 0.12));
     }
   }
 
@@ -1078,7 +1081,7 @@
         platform.gameplayStart();
         if (r.player && r.upAt != null && r.upAt < 0.5) {
           r.player.boostT = BOOST_T;
-          r.player.boostPower = 0.4;
+          r.player.boostPower = 0.06;
           addMsg('PERFECT START!', '#3bff6b', 46);
           audio.boost();
         }
@@ -1163,7 +1166,7 @@
       cam.pitch += (PITCH + jumpPitch - cam.pitch) * (1 - Math.exp(-6 * dt));
       cam.cosp = Math.cos(cam.pitch); cam.sinp = Math.sin(cam.pitch);
     }
-    const boostTarget = f.alive ? f.boostPower / 0.4 : 0;
+    const boostTarget = f.alive ? f.boostPower / 0.32 : 0;
     r.boostView += (boostTarget - r.boostView) * (1 - Math.exp(-(boostTarget > r.boostView ? 5 : 1.4) * dt));
     // the faster you go, the wider the view (and the closer the camera hugs the rocket)
     const spd = f.alive ? clamp(f.v / (r.cruise * 1.1), 0, 1.2) : 0;
@@ -2368,7 +2371,7 @@
       hudRow(12, 44, 176, 'TIME', time, '#ffffff');
     }
     hudRow(12, 76, 176, 'COINS', String(r.coins), '#ffd84a', 1 + r.coinPop * 0.35);
-    hudRow(W - 222, 12, 210, 'SPEED', `${Math.round(p.v * 62)} km/h`, p.boostT > 0 ? '#3bff6b' : '#ffffff', 1, true);
+    hudRow(W - 222, 12, 210, 'SPEED', `${Math.round(p.v * SPEED_TO_MPH)} mph`, p.boostT > 0 ? '#3bff6b' : '#ffffff', 1, true);
     hudRow(W - 222, 44, 210, 'FUEL', '', '#ffffff', 1, true);
     bar(W - 140, 53, 116, 10, p.fuel / 100, p.fuel > 50 ? '#19a6ff' : p.fuel > 25 ? '#ffd400' : '#ff4f4f');
     if (p.fuel < 25 && Math.floor(blink * 4) % 2) txt('LOW FUEL', W - 82, 92, 17, '#ff4f4f');
