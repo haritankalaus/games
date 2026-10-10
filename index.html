@@ -15,7 +15,6 @@
 <h1 id="hero-title">Less scrolling.<br><span class="gradient-word">More playing.</span><span class="title-star" aria-hidden="true">✳</span></h1>
 <p>Pick a world. Find your rhythm. Chase that <em>one more go.</em><br class="desktop-break"> Your next adventure starts right here.</p>
 <div class="hero-actions"><a class="button primary" href="#games">Find my adventure <span aria-hidden="true">↓</span></a><button class="button secondary" id="surprise">Surprise me <span aria-hidden="true">✦</span></button></div>
-<div class="rocket-controls"><button id="launch-rocket" class="launch-button" type="button">Launch the rocket <span aria-hidden="true">↑</span></button><span id="launch-status" role="status" aria-live="polite">Launchpad ready. You’re the commander.</span></div>
 <div class="hero-notes"><span>✧ Free to play</span><span>→ No downloads</span><span>♡ Made for fun</span></div>
 </section>
 <section class="games-section" id="games" aria-labelledby="games-title">
@@ -27,7 +26,14 @@
 </div>
 <p class="filter-status sr-only" role="status" id="filter-status">Showing both games.</p>
 </section>
-<section class="play-banner"><div class="banner-icon" aria-hidden="true">✳</div><div><h2>A little break. A big adventure.</h2><p>No installs. No waiting around. Just choose a game and jump in.</p></div><a href="#games" class="button secondary">Ready, set, play <span aria-hidden="true">→</span></a></section>
+<section class="cockpit" aria-label="Rocket cockpit">
+<div class="cockpit-window" aria-hidden="true"><div class="window-stars"></div><div class="cockpit-earth"></div><span class="window-frame left-frame"></span><span class="window-frame right-frame"></span><div class="window-crosshair"></div></div>
+<div class="cockpit-dashboard">
+<div class="instrument side-instrument" aria-hidden="true"><span class="instrument-label">ENGINE OUTPUT</span><div class="dial"><span class="dial-needle"></span><span class="dial-center"></span></div><div class="indicator-row"><i></i><i></i><i></i><i></i><i></i></div></div>
+<div class="mission-screen"><span class="screen-label"><i></i> FLIGHT DECK / PLAY PLANET</span><h2>Your next mission awaits.</h2><p>Choose your adventure. Take the controls.</p><a href="#games" class="button primary">Explore missions <span aria-hidden="true">↑</span></a><div class="screen-grid" aria-hidden="true"></div></div>
+<div class="instrument side-instrument" aria-hidden="true"><span class="instrument-label">NAVIGATION</span><div class="radar"><span class="radar-sweep"></span><i></i><i></i></div><div class="indicator-row"><i></i><i></i><i></i><i></i><i></i></div></div>
+<div class="console-edge" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+</div></section>
 </main>
 <footer><a class="brand" href="./"><span class="brand-icon" aria-hidden="true">✦</span> PLAY PLANET</a><span>Built for the joy of “one more go.”</span><a href="#hero-title">Back to the stars ↑</a></footer>
 <div class="rocket-scene" aria-hidden="true">
