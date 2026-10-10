@@ -26,7 +26,7 @@
   const IDLE = 0.6;                                            // player speed with the gas released, vs. cruise
   const STEER = 8.5;                 // lanes per second
   const FOCAL = 560, CY = H * 0.42, PITCH = 0.25, COSP = Math.cos(PITCH), SINP = Math.sin(PITCH);
-  const CAM_BACK = 7.2, CAM_UP = 2.0, NEAR = 0.4, DRAW_ROWS = 56; // chase camera: centred right behind the player
+  const CAM_BACK = 4.6, CAM_UP = 2.0, NEAR = 0.4, DRAW_ROWS = 56; // chase camera: centred right behind the player
   const GAP_X = 0.035, GAP_Z = 0.05; // seams between tiles
   const RESPAWN_T = 1.1, GHOST_T = 1.6, BOOST_T = 1.6, FUEL_TIME = 38;
   const FONT = 'Impact, "Arial Black", "Haettenschweiler", sans-serif';
@@ -697,9 +697,7 @@
     confetti(W / 2, H * 0.26, mega ? 40 : 18);
   }
   function addMsg(text, color = '#fff', size = 40) {
-    race.msgs = race.msgs.filter((m) => m.text !== text);
-    race.msgs.push({ text, color, size, t: 0 });
-    if (race.msgs.length > 3) race.msgs.shift();
+    race.msgs = [{ text, color, size, t: 0 }]; // One clear callout; new events replace the old one.
   }
 
   // mode: 'level' | 'endless' | 'demo'
@@ -1154,19 +1152,19 @@
       const k = 1 - Math.exp(-7 * dt);
       cam.x += (f.x * 0.8 - cam.x) * k;
       cam.y += (CAM_UP + clamp(f.y, -0.3, 3) * 0.75 - cam.y) * (1 - Math.exp(-5 * dt));
-      cam.z = f.z * ROW_D - CAM_BACK + r.speedView * 0.5;
+      cam.z = f.z * ROW_D - CAM_BACK + r.speedView * 0.9 + r.boostView * 0.2;
       cam.roll += (-(f.vx + f.bump) * 0.012 - cam.roll) * k;
     }
     r.boostView += ((f.boostT > 0 && f.alive ? 1 : 0) - r.boostView) * Math.min(1, dt * 5);
     // the faster you go, the wider the view (and the closer the camera hugs the rocket)
-    const spd = f.alive ? clamp((f.v - r.cruise * 0.55) / (r.cruise * 0.6), 0, 1) : 0;
+    const spd = f.alive ? clamp(f.v / (r.cruise * 1.1), 0, 1) : 0;
     r.speedView += (spd - r.speedView) * Math.min(1, dt * 3);
-    cam.f = FOCAL * (1 - 0.17 * r.speedView - 0.13 * r.boostView);
+    cam.f = FOCAL * (1 - 0.25 * r.speedView - 0.12 * r.boostView);
 
     // engine trails
     for (const rc of r.racers) {
       if (!rc.alive || Math.abs(rc.z - f.z) > 30) continue;
-      if (rc === f || Math.floor(r.t * 60) % 3 === 0) wemit(rc.x + rand(-0.05, 0.05), rc.y + RY * RS_ROCKET + 0.03, rc.z * ROW_D - 0.75, 1, { min: 0.2, max: 0.8, vz: -1, lmin: 0.15, lmax: rc.boostT > 0 ? 0.4 : 0.28, smin: 0.04, smax: 0.07, colors: rc.boostT > 0 ? ['#9dffb8', '#ffffff'] : ['#ffb040', '#ffd88a'], cap: 10 });
+      if (rc === f || Math.floor(r.t * 60) % 3 === 0) wemit(rc.x + rand(-0.05, 0.05), rc.y + RY * RS_ROCKET + 0.03, rc.z * ROW_D - 0.75, 1, { min: 0.2, max: 0.8, vz: -1, lmin: 0.15, lmax: 0.22 + clamp(rc.v / r.cruise, 0, 1.5) * 0.25 + (rc.boostT > 0 ? 0.18 : 0), smin: 0.04, smax: 0.07, colors: rc.boostT > 0 ? ['#9dffb8', '#ffffff'] : ['#ffb040', '#ffd88a'], cap: 10 });
       if (rc === f && rc.boostT > 0) wemit(rc.x + rand(-0.4, 0.4), rc.y + rand(0.1, 0.5), rc.z * ROW_D - 0.4, 1, { kind: 'spark', max: 0.5, vz: -8, lmin: 0.15, lmax: 0.25, smin: 0.03, smax: 0.05, color: '#9dffb8' });
     }
     updateWParts(dt);
@@ -1469,8 +1467,7 @@
     const yc = dy * COSP + dz * SINP;
     if (zc < 0.05) zc = 0.05;
     PK = cam.f / zc;
-    // Compress horizontal world projection to expose space beside the deck; lane physics stay in world units.
-    PX = W / 2 + dx * PK * 0.72; PY = CY - yc * PK; PZ = zc;
+    PX = W / 2 + dx * PK; PY = CY - yc * PK; PZ = zc;
   }
   function q4(c, x0, y0, z0, x1, y1, z1, x2, y2, z2, x3, y3, z3) {
     ctx.fillStyle = c;
@@ -2026,7 +2023,7 @@
       g.addColorStop(0, 'rgba(255,246,210,0.95)'); g.addColorStop(0.25, 'rgba(255,170,60,0.7)'); g.addColorStop(1, 'rgba(255,90,20,0)');
       ctx.fillStyle = g; circle(ePX, ePY, eK * 0.32);
     }
-    const len = 0.35 + speed * 0.35 + (boost ? 0.5 : 0) + Math.random() * 0.1;
+    const len = 0.3 + speed * speed * 0.85 + (boost ? 0.9 : 0) + Math.random() * 0.08;
     // soft plume of glows from white-hot at the nozzle to red at the tail
     for (let k = 0; k < (OFF.plume ? 0 : 4); k++) {
       const t = k / 3, q = view.toWorld(0, RY, -0.66 - t * len);
@@ -2133,7 +2130,7 @@
   function drawDust(speed) {
     ctx.globalCompositeOperation = 'lighter';
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
-    const len = 0.15 + speed * ROW_D * 0.06;
+    const len = 0.15 + speed * ROW_D * 0.12;
     const near = new Path2D(), far = new Path2D();
     for (const d of DUST) {
       if (d.z < cam.z + 1 || d.z > cam.z + 110) {
@@ -2234,7 +2231,7 @@
     for (let i = 0; i < 34; i++) {
       const a = i * 2.39996 + Math.floor(blink * 24 + i) * 0.37;
       const ph = (blink * (1.8 + (i % 5) * 0.35) + i * 0.137) % 1;
-      const d0 = 230 + ph * 420, len = (40 + 160 * k) * (0.5 + ph);
+      const d0 = 250 + ph * 420, len = (35 + 260 * k * k + 90 * boost) * (0.5 + ph);
       const ca = Math.cos(a), sa = Math.sin(a) * 0.62;
       ctx.strokeStyle = boost > 0.3 && i % 3 === 0 ? '#9dffb8' : '#ffffff';
       ctx.globalAlpha = Math.min(0.5, 0.42 * k) * (1 - ph * 0.5);
@@ -2346,7 +2343,7 @@
     }
     if (r.demo || !p) return;
     if (!OFF.vig) drawSpeedVignette(Math.max(r.speedView * 0.8, r.boostView));
-    drawSpeedLines(Math.max(r.speedView * 0.75, r.boostView), r.boostView);
+    drawSpeedLines(Math.max(r.speedView * 0.95, r.boostView), r.boostView);
     if (r.vig) drawVignette(r.vig);
     const time = fmtTime(r.phase === 'go' ? r.t - r.goT : 0);
     if (r.mode === 'tutorial') {
@@ -2380,9 +2377,9 @@
       const s = Math.min(1, elasticOut(m.t * 2.2));
       ctx.save();
       ctx.globalAlpha = clamp((1.6 - m.t) * 3, 0, 1);
-      ctx.translate(W / 2, H * 0.19 + i * 28);
+      ctx.translate(W / 2, H * 0.21);
       ctx.scale(s, s);
-      txt(m.text, 0, 0, clamp(m.size * 0.48, 18, 30), m.color);
+      txt(m.text, 0, 0, clamp(m.size * 0.85, 28, 48), m.color);
       ctx.restore();
     });
     ctx.globalAlpha = 1;
@@ -2797,7 +2794,7 @@
     platform.loadingStop();
     if (DEBUG) {
       window.__sprint = {
-        get race() { return race; }, get state() { return state; }, get track() { return track; }, save,
+        get race() { return race; }, get state() { return state; }, get track() { return track; }, get camera() { return { ...cam }; }, save,
         start(i) { startLevel(i); }, endless() { startEndless(); },
         autopilot() { race.autopilot = true; race.player.react = 0.08; },
         touch() { touchMode = true; },
