@@ -2432,10 +2432,8 @@
     if (!OFF.vig) drawSpeedVignette(Math.max(r.speedView * 0.8, r.boostView));
     drawSpeedLines(Math.max(r.speedView * 0.95, r.boostView), r.boostView);
     if (r.vig) drawVignette(r.vig);
-    const time = fmtTime(r.phase === 'go' ? r.t - r.goT : 0);
     if (r.mode === 'tutorial') {
       hudRow(12, 12, 176, 'MODE', 'TRAINING', '#ffd400');
-      hudRow(12, 44, 176, 'TIME', time, '#ffffff');
       drawTutorialBanner(r);
     } else if (r.mode === 'endless') {
       hudRow(12, 12, 176, 'DIST', String(Math.floor(p.z)), '#ffffff');
@@ -2443,9 +2441,8 @@
     } else {
       const ps = 1 + 0.4 * Math.max(0, 1 - r.placeT * 3);
       hudRow(12, 12, 176, 'POS', `${ordinal(r.place).toUpperCase()}/${r.racers.length}`, r.place === 1 ? '#ffd400' : '#ffffff', ps);
-      hudRow(12, 44, 176, 'TIME', time, '#ffffff');
     }
-    hudRow(12, 76, 176, 'COINS', String(r.coins), '#ffd84a', 1 + r.coinPop * 0.35);
+    hudRow(W - 188, 12, 176, 'COINS', String(r.coins), '#ffd84a', 1 + r.coinPop * 0.35, true);
     drawFlightHUD(r, p);
     if (r.mode === 'level' && r.t < 4) txt(`LEVEL ${r.lvl} — ${r.def.name}`, W / 2, 40, 24, '#fff');
     // floating +1s
