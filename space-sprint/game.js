@@ -861,7 +861,9 @@
     if (rc.finished) target = 0;
     const accel = target > rc.v ? (rc.boostT > 0 ? 20 : 7) : rc.finished ? 5 : rc.input.brake || rc.stickyT > 0 ? 14 : 8;
     target = Math.min(target, MAX_SPEED);
+    const previousSpeed = rc.v;
     rc.v = Math.min(MAX_SPEED, rc.v + clamp(target - rc.v, -accel * dt, accel * dt));
+    rc.acceleration = (rc.v - previousSpeed) / dt;
 
     // steering works in the air too, as in SkyRoads
     rc.vx += clamp((going ? rc.input.dir : 0) * STEER - rc.vx, -70 * dt, 70 * dt);
@@ -2363,41 +2365,43 @@
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   }
   function drawFlightHUD(r, p) {
-    const line = (...points) => { ctx.beginPath(); ctx.moveTo(points[0], points[1]); for (let i = 2; i < points.length; i += 2) ctx.lineTo(points[i], points[i + 1]); ctx.stroke(); };
-    const poly = (color, ...points) => { ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(points[0], points[1]); for (let i = 2; i < points.length; i += 2) ctx.lineTo(points[i], points[i + 1]); ctx.closePath(); ctx.fill(); };
-    r.hudSpeed = lerp(r.hudSpeed ?? p.v, p.v, 0.22);
-    const speed = clamp(r.hudSpeed / MAX_SPEED, 0, 1), fuel = clamp(p.fuel / 100, 0, 1);
-    const boosting = p.boostT > 0;
-    const cyan = boosting ? '#9dffb8' : '#58eaff';
+    const fuel = clamp(p.fuel / 100, 0, 1);
+    const speed = clamp(p.v / MAX_SPEED, 0, 1);
+    r.hudAcceleration = lerp(r.hudAcceleration ?? 0, p.alive ? (p.acceleration || 0) : 0, 0.2);
+    const acceleration = clamp(r.hudAcceleration / 20, -1, 1);
+    const cyan = p.boostT > 0 ? '#9dffb8' : '#58eaff';
     const fuelColor = fuel > 0.25 ? '#ffca69' : '#ff657b';
+    const panel = (width, color) => {
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(width - 12, 0); ctx.lineTo(width, 12); ctx.lineTo(width, 78); ctx.lineTo(0, 78); ctx.closePath();
+      ctx.fillStyle = 'rgba(3,14,28,0.82)'; ctx.fill();
+      ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.shadowColor = color; ctx.shadowBlur = 5; ctx.stroke(); ctx.shadowBlur = 0;
+    };
     ctx.save();
-    // Lean the instrument into the world, keeping the road centre clear.
-    ctx.transform(1, -0.13, 0.25, 1, 22, touchMode ? H - 270 : H - 120);
-    ctx.fillStyle = 'rgba(3,14,28,0.78)';
-    poly(ctx.fillStyle, 0, 0, 240, 0, 263, 24, 263, 105, 0, 105);
-    ctx.strokeStyle = cyan; ctx.lineWidth = 1.5;
-    line(0, 105, 0, 0, 240, 0, 263, 24, 263, 105, 0, 105);
-    ctx.fillStyle = cyan; ctx.fillRect(0, 0, 4, 105);
-    txt(String(Math.round(p.v * SPEED_TO_MPH)).padStart(3, '0'), 16, 47, 45, '#f0fcff', 'left');
-    txt('MPH', 108, 46, 14, cyan, 'left', false);
-    txt(boosting ? 'BOOST LINK' : 'VELOCITY', 247, 22, 10, cyan, 'right', false);
-    txt(`${Math.round(p.fuel)}%`, 247, 91, 14, fuelColor, 'right', false);
-    txt('FUEL', 15, 91, 12, fuelColor, 'left', false);
-    ctx.shadowColor = cyan; ctx.shadowBlur = boosting ? 10 + Math.sin(blink * 12) * 3 : 5;
-    for (let i = 0; i < 24; i++) {
-      const x = 16 + i * 9.5;
-      ctx.fillStyle = i / 24 < speed ? cyan : '#1b3543';
-      poly(ctx.fillStyle, x, 55, x + 7, 55, x + 10, 66, x + 3, 66);
-    }
+    ctx.transform(1, -0.08, 0.12, 1, 18, touchMode ? H - 245 : H - 100);
+    panel(138, fuelColor);
+    txt('FUEL', 12, 19, 12, fuelColor, 'left', false);
+    txt(`${Math.round(p.fuel)}%`, 125, 43, 24, '#fff', 'right');
+    ctx.shadowColor = fuelColor; ctx.shadowBlur = 6;
+    for (let i = 0; i < 16; i++) { ctx.fillStyle = i / 16 < fuel ? fuelColor : '#332e2d'; ctx.fillRect(12 + i * 7.2, 53, 5, 9); }
     ctx.shadowBlur = 0;
-    for (let i = 0; i < 20; i++) {
-      ctx.fillStyle = i / 20 < fuel ? fuelColor : '#332e2d';
-      ctx.fillRect(58 + i * 7, 81, 5, 9);
-    }
-    if (fuel < 0.25 && Math.floor(blink * 4) % 2) txt('LOW', 247, 68, 12, '#ff657b', 'right', false);
-    // A travelling highlight gives the telemetry a live, retro display feel.
-    ctx.globalAlpha = 0.16;
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(14 + (blink * 40 % 225), 52, 2, 42);
+    txt(fuel < 0.25 ? 'LOW RESERVE' : 'RESERVE', 12, 73, 9, fuel < 0.25 ? '#ff657b' : '#97aebc', 'left', false);
+    ctx.restore();
+
+    ctx.save();
+    ctx.transform(1, 0.08, -0.12, 1, W - 190, touchMode ? H - 400 : H - 113);
+    panel(174, cyan);
+    txt(String(Math.round(p.v * SPEED_TO_MPH)).padStart(3, '0'), 12, 34, 30, '#f0fcff', 'left');
+    txt('MPH', 77, 33, 11, cyan, 'left', false);
+    txt(p.boostT > 0 ? 'BOOST' : 'SPEED', 160, 19, 9, cyan, 'right', false);
+    ctx.shadowColor = cyan; ctx.shadowBlur = 6;
+    for (let i = 0; i < 22; i++) { ctx.fillStyle = i / 22 < speed ? cyan : '#1b3543'; ctx.fillRect(12 + i * 6.7, 42, 4.8, 6); }
+    ctx.shadowBlur = 0;
+    txt('ACCEL', 12, 66, 10, '#97aebc', 'left', false);
+    ctx.fillStyle = '#203442'; ctx.fillRect(60, 57, 98, 7);
+    ctx.fillStyle = acceleration < 0 ? '#ff997d' : cyan;
+    const length = Math.abs(acceleration) * 49;
+    ctx.fillRect(acceleration < 0 ? 109 - length : 109, 57, length, 7);
+    ctx.fillStyle = '#a9c2d2'; ctx.fillRect(108, 55, 1, 11);
     ctx.restore();
   }
 
