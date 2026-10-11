@@ -2371,37 +2371,40 @@
     const acceleration = clamp(r.hudAcceleration / 20, -1, 1);
     const cyan = p.boostT > 0 ? '#9dffb8' : '#58eaff';
     const fuelColor = fuel > 0.25 ? '#ffca69' : '#ff657b';
-    const panel = (width, color) => {
-      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(width - 12, 0); ctx.lineTo(width, 12); ctx.lineTo(width, 78); ctx.lineTo(0, 78); ctx.closePath();
-      ctx.fillStyle = 'rgba(3,14,28,0.82)'; ctx.fill();
-      ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.shadowColor = color; ctx.shadowBlur = 5; ctx.stroke(); ctx.shadowBlur = 0;
+    const gauge = (x, y, value, color) => {
+      ctx.save(); ctx.translate(x, y);
+      const face = ctx.createRadialGradient(-12, -16, 0, 0, 0, 53);
+      face.addColorStop(0, 'rgba(22,43,60,0.94)'); face.addColorStop(1, 'rgba(3,12,24,0.9)');
+      ctx.fillStyle = face; circle(0, 0, 53);
+      ctx.strokeStyle = '#3a5263'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, 53, 0, Math.PI * 2); ctx.stroke();
+      for (let i = 0; i < 28; i++) {
+        const start = Math.PI * 0.75 + i / 28 * Math.PI * 1.5;
+        ctx.strokeStyle = i / 28 < value ? color : '#263c4c';
+        ctx.lineWidth = 4; ctx.shadowColor = color; ctx.shadowBlur = i / 28 < value ? 6 : 0;
+        ctx.beginPath(); ctx.arc(0, 0, 45, start, start + Math.PI * 1.5 / 28 * 0.65); ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
     };
-    ctx.save();
-    ctx.transform(1, -0.08, 0.12, 1, 18, touchMode ? H - 245 : H - 100);
-    panel(138, fuelColor);
-    txt('FUEL', 12, 19, 12, fuelColor, 'left', false);
-    txt(`${Math.round(p.fuel)}%`, 125, 43, 24, '#fff', 'right');
-    ctx.shadowColor = fuelColor; ctx.shadowBlur = 6;
-    for (let i = 0; i < 16; i++) { ctx.fillStyle = i / 16 < fuel ? fuelColor : '#332e2d'; ctx.fillRect(12 + i * 7.2, 53, 5, 9); }
-    ctx.shadowBlur = 0;
-    txt(fuel < 0.25 ? 'LOW RESERVE' : 'RESERVE', 12, 73, 9, fuel < 0.25 ? '#ff657b' : '#97aebc', 'left', false);
+    gauge(76, touchMode ? H - 225 : H - 76, fuel, fuelColor);
+    txt('FUEL', 0, -17, 10, fuelColor, 'center', false);
+    txt(`${Math.round(p.fuel)}%`, 0, 9, 25, '#fff');
+    txt(fuel < 0.25 ? 'LOW' : 'RESERVE', 0, 25, 8, fuel < 0.25 ? '#ff657b' : '#97aebc', 'center', false);
     ctx.restore();
 
-    ctx.save();
-    ctx.transform(1, 0.08, -0.12, 1, W - 190, touchMode ? H - 400 : H - 113);
-    panel(174, cyan);
-    txt(String(Math.round(p.v * SPEED_TO_MPH)).padStart(3, '0'), 12, 34, 30, '#f0fcff', 'left');
-    txt('MPH', 77, 33, 11, cyan, 'left', false);
-    txt(p.boostT > 0 ? 'BOOST' : 'SPEED', 160, 19, 9, cyan, 'right', false);
-    ctx.shadowColor = cyan; ctx.shadowBlur = 6;
-    for (let i = 0; i < 22; i++) { ctx.fillStyle = i / 22 < speed ? cyan : '#1b3543'; ctx.fillRect(12 + i * 6.7, 42, 4.8, 6); }
-    ctx.shadowBlur = 0;
-    txt('ACCEL', 12, 66, 10, '#97aebc', 'left', false);
-    ctx.fillStyle = '#203442'; ctx.fillRect(60, 57, 98, 7);
-    ctx.fillStyle = acceleration < 0 ? '#ff997d' : cyan;
-    const length = Math.abs(acceleration) * 49;
-    ctx.fillRect(acceleration < 0 ? 109 - length : 109, 57, length, 7);
-    ctx.fillStyle = '#a9c2d2'; ctx.fillRect(108, 55, 1, 11);
+    gauge(W - 100, touchMode ? H - 363 : H - 76, speed, cyan);
+    txt(p.boostT > 0 ? 'BOOST' : 'SPEED', 0, -20, 9, cyan, 'center', false);
+    txt(String(Math.round(p.v * SPEED_TO_MPH)).padStart(3, '0'), 0, 5, 28, '#f0fcff');
+    txt('MPH', 0, 18, 9, cyan, 'center', false);
+    // Bidirectional acceleration arc underneath the speed readout.
+    ctx.strokeStyle = '#304451'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 0, 34, Math.PI * 0.3, Math.PI * 0.7); ctx.stroke();
+    ctx.strokeStyle = acceleration < 0 ? '#ff997d' : cyan;
+    ctx.beginPath();
+    if (acceleration >= 0) ctx.arc(0, 0, 34, Math.PI * (0.5 - acceleration * 0.2), Math.PI * 0.5);
+    else ctx.arc(0, 0, 34, Math.PI * 0.5, Math.PI * (0.5 - acceleration * 0.2));
+    ctx.stroke();
+    txt('ACCEL', 0, 44, 7, '#97aebc', 'center', false);
     ctx.restore();
   }
 
